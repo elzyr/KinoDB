@@ -1,16 +1,3 @@
--- -------------------------------
--- Skrypt SQL do tworzenia obiektów i tabel
--- Automatyczne usuwanie istniej¹cych obiektów przed ich ponownym utworzeniem
--- -------------------------------
-
--- Wy³¹cz wyœwietlanie b³êdów zwi¹zanych z brakiem obiektów (opcjonalne)
-SET TERMOUT OFF;
-SET ECHO OFF;
-SET FEEDBACK OFF;
-
--- -------------------------------
--- Sekcja: Usuwanie istniej¹cych obiektów
--- -------------------------------
 BEGIN
     -- Usuwanie tabel w odpowiedniej kolejnoœci (najbardziej zale¿ne najpierw)
     BEGIN
@@ -186,11 +173,6 @@ BEGIN
     END;
 END;
 /
- 
--- W³¹cz ponownie wyœwietlanie b³êdów
-SET TERMOUT ON;
-SET ECHO ON;
-SET FEEDBACK ON;
 
 
 -- -------------------------------
@@ -271,6 +253,7 @@ CREATE OR REPLACE TYPE Bilet AS OBJECT (
 
 -- Typ Bilety_Typ
 CREATE OR REPLACE TYPE Bilety_Typ AS TABLE OF REF Bilet;
+/
 
 -- Typ Rezerwacja
 CREATE OR REPLACE TYPE Rezerwacja AS OBJECT (
@@ -293,18 +276,21 @@ CREATE TABLE Rola_table OF Rola (
     PRIMARY KEY (rola_id),
     CONSTRAINT rola_nazwa_ck CHECK (nazwa IN ('standard', 'premium'))
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
+/
 
 -- Typ Kategoria
 CREATE TABLE Kategoria_table OF Kategoria (
     PRIMARY KEY (kategoria_id),
     CONSTRAINT kategoria_nazwa_ck CHECK (nazwa IS NOT NULL)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
+/
 
 -- Typ Sala
 CREATE TABLE Sala_table OF Sala (
     PRIMARY KEY (sala_id),
     CONSTRAINT sala_nazwa_ck CHECK (nazwa IS NOT NULL)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
+/
 
 -- Tworzenie tabeli Miejsce_table bez ponownego definiowania sala_ref
 CREATE TABLE Miejsce_table OF Miejsce (
@@ -312,7 +298,7 @@ CREATE TABLE Miejsce_table OF Miejsce (
     CONSTRAINT miejsce_rzad_ck CHECK (rzad > 0),
     CONSTRAINT miejsce_numer_ck CHECK (numer > 0)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-
+/
 
 -- Typ U¿ytkownik
 CREATE TABLE Uzytkownik_table OF Uzytkownik (
@@ -320,6 +306,7 @@ CREATE TABLE Uzytkownik_table OF Uzytkownik (
     CONSTRAINT uzytkownik_email_unique UNIQUE(email),
     CONSTRAINT uzytkownik_wiek_ck CHECK (wiek > 15)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
+/
 
 -- Typ Film
 CREATE TABLE Film_table OF Film (
@@ -327,13 +314,15 @@ CREATE TABLE Film_table OF Film (
     CONSTRAINT film_czas_trwania_ck CHECK (czas_trwania > 0),
     CONSTRAINT film_minimalny_wiek_ck CHECK (minimalny_wiek >= 3 AND minimalny_wiek <= 18)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
+/
 
--- Typ Repertuar
+-- Typ Repertuar (Poprawiona Definicja)
 CREATE TABLE Repertuar_table OF Repertuar (
     PRIMARY KEY (repertuar_id)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
+/
 
--- Typ Bilet
+-- Typ Bilet (bez rezerwacja_ref)
 CREATE TABLE Bilet_table OF Bilet (
     PRIMARY KEY (bilet_id),
     CONSTRAINT bilet_cena_ck CHECK (cena > 0),
@@ -341,7 +330,6 @@ CREATE TABLE Bilet_table OF Bilet (
     FOREIGN KEY (miejsce_ref) REFERENCES Miejsce_table
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
 /
-
 
 -- Typ Rezerwacja
 CREATE TABLE Rezerwacja_table OF Rezerwacja (
@@ -352,7 +340,6 @@ CREATE TABLE Rezerwacja_table OF Rezerwacja (
 ) OBJECT IDENTIFIER IS PRIMARY KEY
 NESTED TABLE bilety STORE AS bilety_nt;
 /
-
 
 -- -------------------------------
 -- Sekcja: Tworzenie cia³ typów obiektów
@@ -366,7 +353,7 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
         SELECT COUNT(*)
         INTO v_ilosc
         FROM Bilet_table b
-        WHERE b.seans_ref = REF(self);
+        WHERE b.seans_ref = REF(SELF);
         RETURN v_ilosc;
     END ilosc_miejsc_zajetych;
         
@@ -395,7 +382,6 @@ CREATE OR REPLACE TYPE BODY Bilet AS
 END;
 /
 
-
 -- -------------------------------
 -- Sekcja: Tworzenie wyzwalaczy
 -- -------------------------------
@@ -418,18 +404,23 @@ BEGIN
     END IF;
 END;
 /
-    
+        
 -- Wyzwalacz na zwalnianie miejsc przy anulowaniu rezerwacji
 CREATE OR REPLACE TRIGGER release_seat_on_cancel
 AFTER UPDATE OF czy_anulowane ON Rezerwacja_table
 FOR EACH ROW
-WHEN (NEW.czy_anulowane = 1) -- Poprawiono z TRUE na 1
+WHEN (NEW.czy_anulowane = 1)
+DECLARE
+    TYPE ref_bilet_table_type IS TABLE OF REF Bilet;
+    ref_bilet_table ref_bilet_table_type := :NEW.bilety;
 BEGIN
-    DELETE FROM Bilet_table
-    WHERE rezerwacja_ref = :NEW.ROWID; -- U¿ycie ROWID do odnalezienia odpowiednich biletów
+    -- Usuwanie ka¿dego biletu z kolekcji bilety
+    FOR i IN 1 .. ref_bilet_table.COUNT LOOP
+        DELETE FROM Bilet_table WHERE REF(bilet_table) = ref_bilet_table(i);
+    END LOOP;
 END;
 /
-    
+        
 -- Wyzwalacz na unikalnoœæ seansów w sali
 CREATE OR REPLACE TRIGGER ensure_unique_seans_per_sala
 BEFORE INSERT OR UPDATE ON Repertuar_table
@@ -449,6 +440,9 @@ BEGIN
 END;
 /
 
+-- -------------------------------
+-- Sekcja: Tworzenie pakietów
+-- -------------------------------
 
 -- Pakiet do obs³ugi rezerwacji
 CREATE OR REPLACE PACKAGE Rezerwacja_Pkg AS
@@ -469,7 +463,7 @@ CREATE OR REPLACE PACKAGE Rezerwacja_Pkg AS
     );
 END Rezerwacja_Pkg;
 /
-    
+        
 CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
     -- Procedura sprawdzaj¹ca istnienie u¿ytkownika
     PROCEDURE SprawdzUzytkownika (p_email VARCHAR2, v_uzytkownik OUT REF Uzytkownik) IS
@@ -489,7 +483,7 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
         SELECT REF(f)
         INTO v_film
         FROM Film_table f
-        WHERE f.tytul = p_film_tytul; -- Poprawiono z tytu³ na tytul
+        WHERE f.tytul = p_film_tytul;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
             RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule nie istnieje.');
@@ -597,7 +591,7 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
         SELECT CASE WHEN r.nazwa = 'premium' THEN 0.9 ELSE 1 END
         INTO v_znizka
         FROM Rola_table r
-        WHERE REF(r) = (SELECT rola_ref FROM Uzytkownik_table u WHERE REF(u) = v_uzytkownik);
+        WHERE REF(r) = (SELECT u.rola_ref FROM Uzytkownik_table u WHERE REF(u) = v_uzytkownik);
 
         -- Szukaj seansów i miejsc
         FOR seans IN (
@@ -608,8 +602,9 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
             ORDER BY r.data_rozpoczecia
         ) LOOP
             IF SprawdzDostepneMiejsca(seans.repertuar_ref, p_preferencja_rzad, p_ilosc, v_miejsca) THEN
-                -- Twórz rezerwacjê i bilety
+                -- Twórz rezerwacjê
                 SELECT NVL(MAX(rezerwacja_id), 0) + 1 INTO v_rezerwacja_id FROM Rezerwacja_table;
+
                 INSERT INTO Rezerwacja_table
                 VALUES (
                     Rezerwacja(v_rezerwacja_id, SYSDATE, 0, 0, seans.repertuar_ref, v_uzytkownik, Bilety_Typ())
@@ -620,15 +615,22 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
                 FROM Rezerwacja_table r
                 WHERE r.rezerwacja_id = v_rezerwacja_id;
 
+                -- Wstawienie biletów i aktualizacja kolekcji bilety w rezerwacji
                 FOR i IN 1..p_ilosc LOOP
                     FETCH v_miejsca INTO v_miejsce_id, v_rzad, v_numer;
                     EXIT WHEN v_miejsca%NOTFOUND;
 
+                    -- Wstaw bilet
                     INSERT INTO Bilet_table VALUES (
                         Bilet(Bilet_SEQ.NEXTVAL, v_cena * v_znizka, seans.repertuar_ref, 
-                              (SELECT REF(m) FROM Miejsce_table m WHERE m.miejsce_id = v_miejsce_id), 
-                              v_rezerwacja_ref)
+                              (SELECT REF(m) FROM Miejsce_table m WHERE m.miejsce_id = v_miejsce_id))
                     );
+
+                    -- Dodaj REF Biletu do kolekcji bilety w Rezerwacji
+                    UPDATE Rezerwacja_table
+                    SET bilety = bilety MULTISET UNION
+                        (SELECT REF(b) FROM Bilet_table b WHERE b.bilet_id = Bilet_SEQ.CURRVAL)
+                    WHERE rezerwacja_id = v_rezerwacja_id;
                 END LOOP;
 
                 -- Aktualizuj cenê rezerwacji
@@ -645,12 +647,12 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
     END UtworzRezerwacje;
 END Rezerwacja_Pkg;
 /
-    
+        
 CREATE OR REPLACE PACKAGE AnulujRezerwacje_Pkg AS
     PROCEDURE AnulujRezerwacje (p_rezerwacja_id NUMBER);
 END AnulujRezerwacje_Pkg;
 /
-    
+        
 CREATE OR REPLACE PACKAGE BODY AnulujRezerwacje_Pkg AS
     PROCEDURE AnulujRezerwacje (p_rezerwacja_id NUMBER) IS
     BEGIN
@@ -664,7 +666,7 @@ CREATE OR REPLACE PACKAGE BODY AnulujRezerwacje_Pkg AS
     END AnulujRezerwacje;
 END AnulujRezerwacje_Pkg;
 /
-    
+        
 CREATE OR REPLACE PACKAGE Repertuar_Pkg AS
     PROCEDURE PokazSeanseNaDzien(p_data DATE);
     PROCEDURE DodajSeans(
@@ -674,7 +676,7 @@ CREATE OR REPLACE PACKAGE Repertuar_Pkg AS
     );
 END Repertuar_Pkg;
 /
-    
+        
 CREATE OR REPLACE PACKAGE BODY Repertuar_Pkg AS
     PROCEDURE PokazSeanseNaDzien(p_data DATE) IS
     BEGIN
@@ -803,7 +805,7 @@ BEGIN
     Repertuar_Pkg.DodajSeans(5, 5, TO_DATE('2025-01-15 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 END;
 /
-    
+        
 -- Testowanie rezerwacji
 BEGIN
     Rezerwacja_Pkg.UtworzRezerwacje('jan.kowalski@example.com', 'Komedia na weekend', 2, NULL);
