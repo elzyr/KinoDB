@@ -14,7 +14,7 @@ SET FEEDBACK OFF;
 BEGIN
     -- Usuwanie tabel w odpowiedniej kolejnoœci (najbardziej zale¿ne najpierw)
     BEGIN
-        EXECUTE IMMEDIATE 'DROP TABLE Bilet_table CASCADE CONSTRAINTS';
+        EXECUTE IMMEDIATE 'DROP TABLE Rezerwacja_table CASCADE CONSTRAINTS';
     EXCEPTION
         WHEN OTHERS THEN
             IF SQLCODE != -942 THEN -- ORA-00942: table or view does not exist
@@ -23,7 +23,7 @@ BEGIN
     END;
 
     BEGIN
-        EXECUTE IMMEDIATE 'DROP TABLE Rezerwacja_table CASCADE CONSTRAINTS';
+        EXECUTE IMMEDIATE 'DROP TABLE Bilet_table CASCADE CONSTRAINTS';
     EXCEPTION
         WHEN OTHERS THEN
             IF SQLCODE != -942 THEN
@@ -105,7 +105,7 @@ BEGIN
     END;
 
     BEGIN
-        EXECUTE IMMEDIATE 'DROP TYPE Bilet FORCE';
+        EXECUTE IMMEDIATE 'DROP TYPE Rezerwacja FORCE';
     EXCEPTION
         WHEN OTHERS THEN
             IF SQLCODE != -4043 THEN
@@ -114,7 +114,7 @@ BEGIN
     END;
 
     BEGIN
-        EXECUTE IMMEDIATE 'DROP TYPE Rezerwacja FORCE';
+        EXECUTE IMMEDIATE 'DROP TYPE Bilet FORCE';
     EXCEPTION
         WHEN OTHERS THEN
             IF SQLCODE != -4043 THEN
@@ -203,21 +203,21 @@ CREATE OR REPLACE TYPE Rola AS OBJECT (
     nazwa VARCHAR2(50) -- u¿ytkownik zwyk³y albo premium, który ma 10% zni¿ki
 );
 /
-    
+
 -- Typ Kategoria
 CREATE OR REPLACE TYPE Kategoria AS OBJECT (
     kategoria_id NUMBER,
     nazwa VARCHAR2(100)
 );
 /
-    
+
 -- Typ Sala
 CREATE OR REPLACE TYPE Sala AS OBJECT (
     sala_id NUMBER,
     nazwa VARCHAR2(50)
 );
 /
-    
+
 -- Typ Miejsce
 CREATE OR REPLACE TYPE Miejsce AS OBJECT (
     miejsce_id NUMBER,
@@ -226,7 +226,7 @@ CREATE OR REPLACE TYPE Miejsce AS OBJECT (
     sala_ref REF Sala -- Referencja do Sala
 );
 /
-    
+
 -- Typ U¿ytkownik
 CREATE OR REPLACE TYPE Uzytkownik AS OBJECT (
     user_id NUMBER,
@@ -237,7 +237,7 @@ CREATE OR REPLACE TYPE Uzytkownik AS OBJECT (
     rola_ref REF Rola
 );
 /
-    
+
 -- Typ Film
 CREATE OR REPLACE TYPE Film AS OBJECT (
     film_id NUMBER,
@@ -247,7 +247,7 @@ CREATE OR REPLACE TYPE Film AS OBJECT (
     kategoria_ref REF Kategoria
 );
 /
-    
+
 -- Typ Repertuar
 CREATE OR REPLACE TYPE Repertuar AS OBJECT (
     repertuar_id NUMBER,
@@ -258,8 +258,8 @@ CREATE OR REPLACE TYPE Repertuar AS OBJECT (
     MEMBER FUNCTION data_zakonczenia RETURN DATE
 );
 /
-    
--- Typ Bilet
+
+-- Typ Bilet (bez rezerwacja_ref)
 CREATE OR REPLACE TYPE Bilet AS OBJECT (
     bilet_id NUMBER,
     cena NUMBER(5,2),
@@ -268,11 +268,10 @@ CREATE OR REPLACE TYPE Bilet AS OBJECT (
     MEMBER FUNCTION data_seansu RETURN DATE
 );
 /
-    
+
 -- Typ Bilety_Typ
 CREATE OR REPLACE TYPE Bilety_Typ AS TABLE OF REF Bilet;
-/
-    
+
 -- Typ Rezerwacja
 CREATE OR REPLACE TYPE Rezerwacja AS OBJECT (
     rezerwacja_id NUMBER,
@@ -285,7 +284,6 @@ CREATE OR REPLACE TYPE Rezerwacja AS OBJECT (
 );
 /
 
-
 -- -------------------------------
 -- Sekcja: Tworzenie tabel
 -- -------------------------------
@@ -295,19 +293,19 @@ CREATE TABLE Rola_table OF Rola (
     PRIMARY KEY (rola_id),
     CONSTRAINT rola_nazwa_ck CHECK (nazwa IN ('standard', 'premium'))
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-    
+
 -- Typ Kategoria
 CREATE TABLE Kategoria_table OF Kategoria (
     PRIMARY KEY (kategoria_id),
     CONSTRAINT kategoria_nazwa_ck CHECK (nazwa IS NOT NULL)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-    
+
 -- Typ Sala
 CREATE TABLE Sala_table OF Sala (
     PRIMARY KEY (sala_id),
     CONSTRAINT sala_nazwa_ck CHECK (nazwa IS NOT NULL)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-    
+
 -- Tworzenie tabeli Miejsce_table bez ponownego definiowania sala_ref
 CREATE TABLE Miejsce_table OF Miejsce (
     PRIMARY KEY (miejsce_id),
@@ -315,95 +313,45 @@ CREATE TABLE Miejsce_table OF Miejsce (
     CONSTRAINT miejsce_numer_ck CHECK (numer > 0)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
 
-    
+
 -- Typ U¿ytkownik
 CREATE TABLE Uzytkownik_table OF Uzytkownik (
     PRIMARY KEY (user_id),
     CONSTRAINT uzytkownik_email_unique UNIQUE(email),
-    CONSTRAINT uzytkownik_wiek_ck CHECK (wiek > 15),
-    rola_ref REF Rola
+    CONSTRAINT uzytkownik_wiek_ck CHECK (wiek > 15)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-    
+
 -- Typ Film
 CREATE TABLE Film_table OF Film (
     PRIMARY KEY (film_id),
     CONSTRAINT film_czas_trwania_ck CHECK (czas_trwania > 0),
-    CONSTRAINT film_minimalny_wiek_ck CHECK (minimalny_wiek >= 3 AND minimalny_wiek <= 18),
-    kategoria_ref REF Kategoria
+    CONSTRAINT film_minimalny_wiek_ck CHECK (minimalny_wiek >= 3 AND minimalny_wiek <= 18)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-    
+
 -- Typ Repertuar
 CREATE TABLE Repertuar_table OF Repertuar (
-    PRIMARY KEY (repertuar_id),
-    film_ref REF Film,
-    sala_ref REF Sala
+    PRIMARY KEY (repertuar_id)
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-    
+
 -- Typ Bilet
 CREATE TABLE Bilet_table OF Bilet (
     PRIMARY KEY (bilet_id),
-    cena NUMBER(5,2),
-    seans_ref REF Repertuar,
-    miejsce_ref REF Miejsce,
     CONSTRAINT bilet_cena_ck CHECK (cena > 0),
     FOREIGN KEY (seans_ref) REFERENCES Repertuar_table,
     FOREIGN KEY (miejsce_ref) REFERENCES Miejsce_table
 ) OBJECT IDENTIFIER IS PRIMARY KEY;
-    
+/
+
+
 -- Typ Rezerwacja
 CREATE TABLE Rezerwacja_table OF Rezerwacja (
     PRIMARY KEY (rezerwacja_id),
-    data_rezerwacji DATE, -- Nie mo¿na rezerwowaæ biletów na seans, który siê zacz¹³
-    cena_laczna NUMBER,
-    czy_anulowane NUMBER,  -- 0 - op³acone, 1 - anulowane
-    repertuar_ref REF Repertuar,
-    uzytkownik_ref REF Uzytkownik,
-    bilety Bilety_Typ
+    -- Dodaj dodatkowe ograniczenia bez okreœlania typu danych
+    CONSTRAINT rezerwacja_cena_laczna_ck CHECK (cena_laczna > 0),
+    CONSTRAINT rezerwacja_czy_anulowane_ck CHECK (czy_anulowane IN (0, 1))
 ) OBJECT IDENTIFIER IS PRIMARY KEY
 NESTED TABLE bilety STORE AS bilety_nt;
-
-
--- -------------------------------
--- Sekcja: Tworzenie cia³ typów obiektów
--- -------------------------------
-
--- Cia³o Repertuaru
-CREATE OR REPLACE TYPE BODY Repertuar AS
-    MEMBER FUNCTION ilosc_miejsc_zajetych RETURN NUMBER IS
-        v_ilosc NUMBER;
-    BEGIN
-        SELECT COUNT(*)
-        INTO v_ilosc
-        FROM Bilet_table b
-        WHERE b.seans_ref = REF(self);
-        RETURN v_ilosc;
-    END ilosc_miejsc_zajetych;
-        
-    MEMBER FUNCTION data_zakonczenia RETURN DATE IS
-        v_czas_trwania NUMBER;
-    BEGIN
-        SELECT f.czas_trwania INTO v_czas_trwania
-        FROM Film_table f
-        WHERE REF(f) = SELF.film_ref;
-    
-        RETURN SELF.data_rozpoczecia + (v_czas_trwania / (24 * 60)); -- Zak³adam czas trwania w minutach
-    END data_zakonczenia;
-END;
 /
-    
--- Cia³o Biletu
-CREATE OR REPLACE TYPE BODY Bilet AS
-    MEMBER FUNCTION data_seansu RETURN DATE IS
-        v_data DATE;
-    BEGIN
-        SELECT r.data_rozpoczecia INTO v_data
-        FROM Repertuar_table r
-        WHERE REF(r) = seans_ref;
-        RETURN v_data;
-    END data_seansu;
-END;
-/
-
 
 
 -- -------------------------------
@@ -470,19 +418,18 @@ BEGIN
     END IF;
 END;
 /
-
-
+    
 -- Wyzwalacz na zwalnianie miejsc przy anulowaniu rezerwacji
 CREATE OR REPLACE TRIGGER release_seat_on_cancel
 AFTER UPDATE OF czy_anulowane ON Rezerwacja_table
 FOR EACH ROW
-WHEN (NEW.czy_anulowane = TRUE)
+WHEN (NEW.czy_anulowane = 1) -- Poprawiono z TRUE na 1
 BEGIN
     DELETE FROM Bilet_table
-    WHERE rezerwacja_ref = REF(:NEW);
+    WHERE rezerwacja_ref = :NEW.ROWID; -- U¿ycie ROWID do odnalezienia odpowiednich biletów
 END;
 /
-
+    
 -- Wyzwalacz na unikalnoœæ seansów w sali
 CREATE OR REPLACE TRIGGER ensure_unique_seans_per_sala
 BEFORE INSERT OR UPDATE ON Repertuar_table
@@ -503,11 +450,10 @@ END;
 /
 
 
-
 -- Pakiet do obs³ugi rezerwacji
 CREATE OR REPLACE PACKAGE Rezerwacja_Pkg AS
-    PROCEDURE SprawdzWiekUzytkownika (v_uzytkownik REF U¿ytkownik, v_film REF Film);
-    PROCEDURE SprawdzUzytkownika (p_email VARCHAR2, v_uzytkownik OUT REF U¿ytkownik);
+    PROCEDURE SprawdzWiekUzytkownika (v_uzytkownik REF Uzytkownik, v_film REF Film);
+    PROCEDURE SprawdzUzytkownika (p_email VARCHAR2, v_uzytkownik OUT REF Uzytkownik);
     PROCEDURE SprawdzFilm (p_film_tytul VARCHAR2, v_film OUT REF Film);
     FUNCTION SprawdzDostepneMiejsca (
         p_repertuar REF Repertuar,
@@ -523,32 +469,35 @@ CREATE OR REPLACE PACKAGE Rezerwacja_Pkg AS
     );
 END Rezerwacja_Pkg;
 /
-
+    
 CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
-    PROCEDURE SprawdzUzytkownika (p_email VARCHAR2, v_uzytkownik OUT REF U¿ytkownik) IS
+    -- Procedura sprawdzaj¹ca istnienie u¿ytkownika
+    PROCEDURE SprawdzUzytkownika (p_email VARCHAR2, v_uzytkownik OUT REF Uzytkownik) IS
     BEGIN
         SELECT REF(u)
         INTO v_uzytkownik
-        FROM U¿ytkownik_table u
+        FROM Uzytkownik_table u
         WHERE u.email = p_email;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
             RAISE_APPLICATION_ERROR(-20001, 'U¿ytkownik o podanym e-mailu nie istnieje.');
     END SprawdzUzytkownika;
 
+    -- Procedura sprawdzaj¹ca istnienie filmu
     PROCEDURE SprawdzFilm (p_film_tytul VARCHAR2, v_film OUT REF Film) IS
     BEGIN
         SELECT REF(f)
         INTO v_film
         FROM Film_table f
-        WHERE f.tytu³ = p_film_tytul;
+        WHERE f.tytul = p_film_tytul; -- Poprawiono z tytu³ na tytul
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
             RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule nie istnieje.');
     END SprawdzFilm;
 
+    -- Procedura sprawdzaj¹ca wiek u¿ytkownika wzglêdem wymagañ filmu
     PROCEDURE SprawdzWiekUzytkownika (
-        v_uzytkownik REF U¿ytkownik,
+        v_uzytkownik REF Uzytkownik,
         v_film REF Film
     ) IS
         v_wiek NUMBER;
@@ -556,7 +505,7 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
     BEGIN
         -- Pobierz wiek u¿ytkownika
         SELECT u.wiek INTO v_wiek
-        FROM U¿ytkownik_table u
+        FROM Uzytkownik_table u
         WHERE REF(u) = v_uzytkownik;
 
         -- Pobierz minimalny wiek dla filmu
@@ -570,16 +519,18 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
         END IF;
     END SprawdzWiekUzytkownika;
 
+    -- Funkcja sprawdzaj¹ca dostêpnoœæ miejsc
     FUNCTION SprawdzDostepneMiejsca (
         p_repertuar REF Repertuar,
         p_preferencja_rzad NUMBER DEFAULT NULL,
         p_ilosc NUMBER,
         v_miejsca OUT SYS_REFCURSOR
     ) RETURN BOOLEAN IS
-        v_miejsca_szeregowane NUMBER := 0;
+        v_prev_numer NUMBER := NULL;
+        v_count_sequential NUMBER := 0;
         v_miejsce_id NUMBER;
         v_rzad NUMBER;
-        v_numer_start NUMBER;
+        v_numer NUMBER;
     BEGIN
         OPEN v_miejsca FOR
             SELECT m.miejsce_id, m.rzad, m.numer
@@ -592,36 +543,40 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
             AND (p_preferencja_rzad IS NULL OR m.rzad = p_preferencja_rzad)
             ORDER BY m.rzad, m.numer;
 
-        FETCH v_miejsca INTO v_miejsce_id, v_rzad, v_numer_start;
-        WHILE v_miejsca%FOUND LOOP
-            IF v_miejsca_szeregowane = 0 THEN
-                v_miejsca_szeregowane := 1;
-            ELSIF v_numer_start = v_numer_start + v_miejsca_szeregowane THEN
-                v_miejsca_szeregowane := v_miejsca_szeregowane + 1;
+        LOOP
+            FETCH v_miejsca INTO v_miejsce_id, v_rzad, v_numer;
+            EXIT WHEN v_miejsca%NOTFOUND;
+
+            IF v_prev_numer IS NULL THEN
+                v_count_sequential := 1;
+            ELSIF v_numer = v_prev_numer + 1 THEN
+                v_count_sequential := v_count_sequential + 1;
             ELSE
-                v_miejsca_szeregowane := 1;
+                v_count_sequential := 1;
             END IF;
 
-            IF v_miejsca_szeregowane = p_ilosc THEN
+            IF v_count_sequential = p_ilosc THEN
                 RETURN TRUE;
             END IF;
 
-            FETCH v_miejsca INTO v_miejsce_id, v_rzad, v_numer_start;
+            v_prev_numer := v_numer;
         END LOOP;
 
         RETURN FALSE;
     END SprawdzDostepneMiejsca;
 
+    -- Procedura tworz¹ca rezerwacjê
     PROCEDURE UtworzRezerwacje (
         p_email VARCHAR2,
         p_film_tytul VARCHAR2,
         p_ilosc NUMBER,
         p_preferencja_rzad NUMBER DEFAULT NULL
     ) IS
-        v_uzytkownik REF U¿ytkownik;
+        v_uzytkownik REF Uzytkownik;
         v_film REF Film;
         v_repertuar REF Repertuar;
         v_rezerwacja_id NUMBER;
+        v_rezerwacja_ref REF Rezerwacja;
         v_cena NUMBER := 50;
         v_znizka NUMBER := 1;
         v_miejsca SYS_REFCURSOR;
@@ -642,7 +597,7 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
         SELECT CASE WHEN r.nazwa = 'premium' THEN 0.9 ELSE 1 END
         INTO v_znizka
         FROM Rola_table r
-        WHERE REF(r) = v_uzytkownik.rola_ref;
+        WHERE REF(r) = (SELECT rola_ref FROM Uzytkownik_table u WHERE REF(u) = v_uzytkownik);
 
         -- Szukaj seansów i miejsc
         FOR seans IN (
@@ -657,12 +612,22 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
                 SELECT NVL(MAX(rezerwacja_id), 0) + 1 INTO v_rezerwacja_id FROM Rezerwacja_table;
                 INSERT INTO Rezerwacja_table
                 VALUES (
-                    Rezerwacja(v_rezerwacja_id, SYSDATE, 0, FALSE, seans.repertuar_ref, v_uzytkownik, Bilety_Typ()));
+                    Rezerwacja(v_rezerwacja_id, SYSDATE, 0, 0, seans.repertuar_ref, v_uzytkownik, Bilety_Typ())
+                );
+
+                -- Pobierz referencjê do nowo utworzonej rezerwacji
+                SELECT REF(r) INTO v_rezerwacja_ref
+                FROM Rezerwacja_table r
+                WHERE r.rezerwacja_id = v_rezerwacja_id;
 
                 FOR i IN 1..p_ilosc LOOP
                     FETCH v_miejsca INTO v_miejsce_id, v_rzad, v_numer;
+                    EXIT WHEN v_miejsca%NOTFOUND;
+
                     INSERT INTO Bilet_table VALUES (
-                        Bilet(Bilet_SEQ.NEXTVAL, v_cena * v_znizka, REF(v_rezerwacja_id), seans.repertuar_ref, (SELECT REF(m) FROM Miejsce_table m WHERE m.miejsce_id = v_miejsce_id))
+                        Bilet(Bilet_SEQ.NEXTVAL, v_cena * v_znizka, seans.repertuar_ref, 
+                              (SELECT REF(m) FROM Miejsce_table m WHERE m.miejsce_id = v_miejsce_id), 
+                              v_rezerwacja_ref)
                     );
                 END LOOP;
 
@@ -680,20 +645,18 @@ CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
     END UtworzRezerwacje;
 END Rezerwacja_Pkg;
 /
-
-
-
+    
 CREATE OR REPLACE PACKAGE AnulujRezerwacje_Pkg AS
     PROCEDURE AnulujRezerwacje (p_rezerwacja_id NUMBER);
 END AnulujRezerwacje_Pkg;
 /
-
+    
 CREATE OR REPLACE PACKAGE BODY AnulujRezerwacje_Pkg AS
     PROCEDURE AnulujRezerwacje (p_rezerwacja_id NUMBER) IS
     BEGIN
         -- Aktualizuj rezerwacjê na anulowan¹
         UPDATE Rezerwacja_table
-        SET czy_anulowane = TRUE
+        SET czy_anulowane = 1
         WHERE rezerwacja_id = p_rezerwacja_id;
 
         -- Usuwanie biletów powi¹zanych z rezerwacj¹ jest obs³ugiwane przez wyzwalacz
@@ -701,7 +664,7 @@ CREATE OR REPLACE PACKAGE BODY AnulujRezerwacje_Pkg AS
     END AnulujRezerwacje;
 END AnulujRezerwacje_Pkg;
 /
-
+    
 CREATE OR REPLACE PACKAGE Repertuar_Pkg AS
     PROCEDURE PokazSeanseNaDzien(p_data DATE);
     PROCEDURE DodajSeans(
@@ -711,19 +674,19 @@ CREATE OR REPLACE PACKAGE Repertuar_Pkg AS
     );
 END Repertuar_Pkg;
 /
-
+    
 CREATE OR REPLACE PACKAGE BODY Repertuar_Pkg AS
     PROCEDURE PokazSeanseNaDzien(p_data DATE) IS
     BEGIN
         FOR r IN (
-            SELECT r.repertuar_id, f.tytu³, r.data_rozpoczecia, s.nazwa
+            SELECT r.repertuar_id, f.tytul, r.data_rozpoczecia, s.nazwa
             FROM Repertuar_table r
             JOIN Film_table f ON REF(f) = r.film_ref
             JOIN Sala_table s ON REF(s) = r.sala_ref
             WHERE TRUNC(r.data_rozpoczecia) = TRUNC(p_data)
             ORDER BY r.data_rozpoczecia
         ) LOOP
-            DBMS_OUTPUT.PUT_LINE('Seans ID: ' || r.repertuar_id || ', Film: ' || r.tytu³ || ', Data: ' || r.data_rozpoczecia || ', Sala: ' || r.nazwa);
+            DBMS_OUTPUT.PUT_LINE('Seans ID: ' || r.repertuar_id || ', Film: ' || r.tytul || ', Data: ' || r.data_rozpoczecia || ', Sala: ' || r.nazwa);
         END LOOP;
     END PokazSeanseNaDzien;
 
@@ -761,6 +724,14 @@ CREATE OR REPLACE PACKAGE BODY Repertuar_Pkg AS
 END Repertuar_Pkg;
 /
 
+-- Tworzenie sekwencji dla biletów
+CREATE SEQUENCE Bilet_SEQ START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+/
+
+-- -------------------------------
+-- Sekcja: Inicjalizacja danych
+-- -------------------------------
+
 -- Dodanie ról
 INSERT INTO Rola_table VALUES (Rola(1, 'standard'));
 INSERT INTO Rola_table VALUES (Rola(2, 'premium'));
@@ -772,26 +743,56 @@ INSERT INTO Kategoria_table VALUES (Kategoria(3, 'Horror'));
 INSERT INTO Kategoria_table VALUES (Kategoria(4, 'Akcja'));
 INSERT INTO Kategoria_table VALUES (Kategoria(5, 'Animacja'));
 
+-- Dodanie sal
+INSERT INTO Sala_table VALUES (Sala(1, 'Sala A'));
+INSERT INTO Sala_table VALUES (Sala(2, 'Sala B'));
+INSERT INTO Sala_table VALUES (Sala(3, 'Sala C'));
+INSERT INTO Sala_table VALUES (Sala(4, 'Sala D'));
+INSERT INTO Sala_table VALUES (Sala(5, 'Sala E'));
+
 -- Dodanie u¿ytkowników w ró¿nych grupach wiekowych
-INSERT INTO U¿ytkownik_table VALUES (U¿ytkownik(1, 'Jan', 'Kowalski', 12, 'jan.kowalski@example.com', (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 1)));
-INSERT INTO U¿ytkownik_table VALUES (U¿ytkownik(2, 'Anna', 'Nowak', 18, 'anna.nowak@example.com', (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 2)));
-INSERT INTO U¿ytkownik_table VALUES (U¿ytkownik(3, 'Piotr', 'Wiœniewski', 25, 'piotr.wisniewski@example.com', (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 1)));
-INSERT INTO U¿ytkownik_table VALUES (U¿ytkownik(4, 'Kasia', 'Zalewska', 16, 'kasia.zalewska@example.com', (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 2)));
-INSERT INTO U¿ytkownik_table VALUES (U¿ytkownik(5, 'Marek', 'Szymañski', 30, 'marek.szymanski@example.com', (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 1)));
+INSERT INTO Uzytkownik_table VALUES (
+    Uzytkownik(1, 'Jan', 'Kowalski', 12, 'jan.kowalski@example.com', 
+    (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 1))
+);
+INSERT INTO Uzytkownik_table VALUES (
+    Uzytkownik(2, 'Anna', 'Nowak', 18, 'anna.nowak@example.com', 
+    (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 2))
+);
+INSERT INTO Uzytkownik_table VALUES (
+    Uzytkownik(3, 'Piotr', 'Wiœniewski', 25, 'piotr.wisniewski@example.com', 
+    (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 1))
+);
+INSERT INTO Uzytkownik_table VALUES (
+    Uzytkownik(4, 'Kasia', 'Zalewska', 16, 'kasia.zalewska@example.com', 
+    (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 2))
+);
+INSERT INTO Uzytkownik_table VALUES (
+    Uzytkownik(5, 'Marek', 'Szymañski', 30, 'marek.szymanski@example.com', 
+    (SELECT REF(r) FROM Rola_table r WHERE r.rola_id = 1))
+);
 
 -- Dodanie filmów z wymaganiami wiekowymi
-INSERT INTO Film_table VALUES (Film(1, 'Komedia na weekend', 90, 0, (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 1)));
-INSERT INTO Film_table VALUES (Film(2, 'Dramat ¿ycia', 120, 12, (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 2)));
-INSERT INTO Film_table VALUES (Film(3, 'Horror w lesie', 100, 18, (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 3)));
-INSERT INTO Film_table VALUES (Film(4, 'Akcja bez granic', 140, 16, (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 4)));
-INSERT INTO Film_table VALUES (Film(5, 'Animacja dla dzieci', 80, 0, (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 5)));
-
--- Dodanie sal
-INSERT INTO Sala_table VALUES (Sala(1, 'Sala A', NULL));
-INSERT INTO Sala_table VALUES (Sala(2, 'Sala B', NULL));
-INSERT INTO Sala_table VALUES (Sala(3, 'Sala C', NULL));
-INSERT INTO Sala_table VALUES (Sala(4, 'Sala D', NULL));
-INSERT INTO Sala_table VALUES (Sala(5, 'Sala E', NULL));
+INSERT INTO Film_table VALUES (
+    Film(1, 'Komedia na weekend', 90, 0, 
+    (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 1))
+);
+INSERT INTO Film_table VALUES (
+    Film(2, 'Dramat ¿ycia', 120, 12, 
+    (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 2))
+);
+INSERT INTO Film_table VALUES (
+    Film(3, 'Horror w lesie', 100, 18, 
+    (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 3))
+);
+INSERT INTO Film_table VALUES (
+    Film(4, 'Akcja bez granic', 140, 16, 
+    (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 4))
+);
+INSERT INTO Film_table VALUES (
+    Film(5, 'Animacja dla dzieci', 80, 0, 
+    (SELECT REF(k) FROM Kategoria_table k WHERE k.kategoria_id = 5))
+);
 
 -- Dodanie seansów za pomoc¹ pakietu Repertuar_Pkg
 BEGIN
@@ -802,7 +803,7 @@ BEGIN
     Repertuar_Pkg.DodajSeans(5, 5, TO_DATE('2025-01-15 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 END;
 /
-
+    
 -- Testowanie rezerwacji
 BEGIN
     Rezerwacja_Pkg.UtworzRezerwacje('jan.kowalski@example.com', 'Komedia na weekend', 2, NULL);
