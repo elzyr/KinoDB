@@ -1034,7 +1034,8 @@ BEGIN
     Repertuar_Pkg.DodajSeans(5, 5, TO_DATE('2025-03-19 18:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 END;
 /
-
+SELECT r.repertuar_id, r.data_rozpoczecia, r.film_ref, r.sala_ref
+FROM Repertuar_table r;
 
 -- Testowanie rezerwacji
 BEGIN
