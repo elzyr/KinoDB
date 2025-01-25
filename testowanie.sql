@@ -180,19 +180,6 @@ BEGIN
 END;
 /
 
-
-
-BEGIN
-    Klient_Pkg.ZarezerwujMiejsca(
-        p_email => 'jan.kowalski@example.com',
-        p_film_tytul => 'Wielka Przygoda',
-        p_ilosc => 50,
-        p_data => TO_DATE('2025-01-26 15:00', 'YYYY-MM-DD HH24:MI'),
-        p_preferencja_rzad => 1 
-    );
-END;
-/
-
 BEGIN
     Klient_Pkg.ZarezerwujMiejsca(
         p_email => 'piotr.zielinski@example.com',
@@ -203,27 +190,9 @@ BEGIN
     );
 END;
 /
-BEGIN
-    Klient_Pkg.AnulujRezerwacje(
-        p_email => 'jan.kowalski@example.com',
-        p_film_tytul => 'Wielka Przygoda',
-        p_data => TO_DATE('2025-01-26 15:00', 'YYYY-MM-DD HH24:MI')
-    );
-END;
-/
 
-BEGIN
-    Klient_Pkg.PokazRezerwacjeUzytkownika('jan.kowalski@example.com');
-END;
 BEGIN
     Klient_Pkg.PokazRezerwacjeUzytkownika('piotr.zielinski@example.com');
 END;
+/
 
-
-SELECT * FROM Film_table WHERE tytul = 'Wielka Przygoda';
-
-SELECT * 
-FROM Repertuar_table r
-JOIN Film_table f ON REF(f) = r.film_ref
-JOIN Sala_table s ON REF(s) = r.sala_ref
-WHERE f.tytul = 'Wielka Przygoda' ;
