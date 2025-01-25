@@ -100,7 +100,7 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
         WHERE f.film_id = p_film_id;
 
         -- Obliczenie czasu zakoñczenia seansu
-        v_data_zakonczenia := p_data_rozpoczecia + NUMTODSINTERVAL(v_czas_trwania + 30, 'MINUTE');
+        v_data_zakonczenia := p_data_rozpoczecia + (v_czas_trwania + 30) / 1440;
 
         -- Sprawdzenie godzin rozpoczêcia i zakoñczenia seansu
         IF TO_CHAR(p_data_rozpoczecia, 'HH24:MI') < '07:00' OR TO_CHAR(p_data_rozpoczecia, 'HH24:MI') > '22:00' THEN
@@ -112,14 +112,14 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
         END IF;
 
         -- Sprawdzenie przerwy 30 minut miêdzy seansami w tej samej sali
-        SELECT COUNT(*)
+       SELECT COUNT(*)
         INTO v_existing_seans_count
         FROM Repertuar_table r
         WHERE r.sala_ref = v_sala_ref
           AND (
-                (p_data_rozpoczecia BETWEEN r.data_rozpoczecia AND (r.data_rozpoczecia + NUMTODSINTERVAL((SELECT f.czas_trwania FROM Film_table f WHERE REF(f) = r.film_ref) + 30, 'MINUTE')))
+                (p_data_rozpoczecia BETWEEN r.data_rozpoczecia AND (r.data_rozpoczecia + ((SELECT f.czas_trwania FROM Film_table f WHERE REF(f) = r.film_ref) + 30) / 1440))
                 OR
-                (v_data_zakonczenia BETWEEN r.data_rozpoczecia AND (r.data_rozpoczecia + NUMTODSINTERVAL((SELECT f.czas_trwania FROM Film_table f WHERE REF(f) = r.film_ref) + 30, 'MINUTE')))
+                (v_data_zakonczenia BETWEEN r.data_rozpoczecia AND (r.data_rozpoczecia + ((SELECT f.czas_trwania FROM Film_table f WHERE REF(f) = r.film_ref) + 30) / 1440))
                 OR
                 (r.data_rozpoczecia BETWEEN p_data_rozpoczecia AND v_data_zakonczenia)
               );
@@ -243,10 +243,10 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
         END IF;
 
         -- Wyœwietlenie wyniku
-        DBMS_OUTPUT.PUT_LINE(
-            'Popularnoœæ filmu "' || p_tytul || '" w ci¹gu ostatnich 7 dni: ' ||
-            TO_CHAR(v_percentage, 'FM99990.00') || '%'
-        );
+    DBMS_OUTPUT.PUT_LINE(
+        'Popularnoœæ filmu "' || p_tytul || '" w ci¹gu ostatnich 7 dni: ' || ROUND(v_percentage, 2) || '%'
+    );
+
 
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
