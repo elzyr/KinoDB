@@ -166,7 +166,17 @@ PROCEDURE UstawRoleUzytkownika(
     p_email VARCHAR2,
     p_nowa_rola VARCHAR2
 ) IS
+    v_user_id Uzytkownik_table.user_id%TYPE;
 BEGIN
+    BEGIN
+            SELECT user_id INTO v_user_id
+            FROM Uzytkownik_table
+            WHERE email = p_email;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20002, 'U¿ytkownik o emailu ' || p_email || ' nie istnieje.');
+    END;
+    
     IF p_nowa_rola NOT IN ('premium', 'standard') THEN
         RAISE_APPLICATION_ERROR(-20001, 'Nieprawid³owa rola: ' || p_nowa_rola || '. Dozwolone wartoœci to ''premium'' lub ''standard''.');
     END IF;
