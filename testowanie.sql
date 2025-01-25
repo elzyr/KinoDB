@@ -73,67 +73,13 @@ BEGIN
     admin_seanse.add_seans(
         p_film_id => 1, -- Zak³adaj¹c, ¿e ID filmu to 1
         p_sala_id => 1, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-25 15:00', 'YYYY-MM-DD HH24:MI')
+        p_data_rozpoczecia => TO_DATE('2025-01-26 15:00', 'YYYY-MM-DD HH24:MI')
     );
     
 
     DBMS_OUTPUT.PUT_LINE('Poprawne seanse dodane.');
 END;
 /
-
--- Przypadki testuj¹ce b³êdy
-BEGIN
-    -- Przypadek: Seans zaczyna siê przed godzin¹ 07:00
-    admin_seanse.add_seans(
-        p_film_id => 1, -- Zak³adaj¹c, ¿e ID filmu to 1
-        p_sala_id => 1, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-25 06:00', 'YYYY-MM-DD HH24:MI')
-    );
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('B³¹d: ' || SQLERRM);
-END;
-/
-
-BEGIN
-    -- Przypadek: Seans koliduje z istniej¹cym seansem
-    admin_seanse.add_seans(
-        p_film_id => 1, -- Zak³adaj¹c, ¿e ID filmu to 1
-        p_sala_id => 1, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-25 16:30', 'YYYY-MM-DD HH24:MI') -- Kolizja z poprzednim seansem
-    );
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('B³¹d: ' || SQLERRM);
-END;
-/
-
-BEGIN
-    -- Przypadek: Próba dodania seansu do nieistniej¹cej sali
-    admin_seanse.add_seans(
-        p_film_id => 1, -- Zak³adaj¹c, ¿e ID filmu to 1
-        p_sala_id => 999, -- Nieistniej¹ce ID sali
-        p_data_rozpoczecia => TO_DATE('2025-01-25 18:00', 'YYYY-MM-DD HH24:MI')
-    );
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('B³¹d: ' || SQLERRM);
-END;
-/
-
-BEGIN
-    -- Przypadek: Próba dodania seansu z nieistniej¹cym filmem
-    admin_seanse.add_seans(
-        p_film_id => 999, -- Nieistniej¹ce ID filmu
-        p_sala_id => 1, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-25 20:00', 'YYYY-MM-DD HH24:MI')
-    );
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('B³¹d: ' || SQLERRM);
-END;
-/
-
 
 -- dodawnie kleinta
 
@@ -177,7 +123,7 @@ END;
 /
 
 BEGIN
-    Klient_Pkg.PokazSeanseNaDzien(TO_DATE('2025-01-25', 'YYYY-MM-DD'));
+    Klient_Pkg.PokazSeanseNaDzien(TO_DATE('2025-01-26', 'YYYY-MM-DD'));
 END;
 /
 
@@ -188,7 +134,7 @@ BEGIN
         p_email => 'jan.kowalski@example.com',
         p_film_tytul => 'Wielka Przygoda',
         p_ilosc => 2,
-        p_data => TO_DATE('2025-01-25 17:00', 'YYYY-MM-DD HH24:MI'),
+        p_data => TO_DATE('2025-01-26 15:00', 'YYYY-MM-DD HH24:MI'),
         p_preferencja_rzad => 1 
     );
 END;
@@ -207,7 +153,9 @@ BEGIN
     Klient_Pkg.PokazRezerwacjeUzytkownika('jan.kowalski@example.com');
 END;
 
-
+begin
+    admin_seanse.popularnosc_filmu('Wielka Przygoda');
+end;
 
 SELECT * FROM Film_table WHERE tytul = 'Wielka Przygoda';
 
