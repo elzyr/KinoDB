@@ -51,7 +51,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         END IF;
     END PokazSeanseNaDzien;
 
-    -- Rezerwowanie miejsc
+     -- Rezerwowanie miejsc
     PROCEDURE ZarezerwujMiejsca(
         p_email VARCHAR2,
         p_film_tytul VARCHAR2,
@@ -66,9 +66,11 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         v_cena NUMBER := 50;
         v_znizka NUMBER := 1;
         v_cena_laczna NUMBER;
-        v_miejsca SYS_REFCURSOR;
+        v_dostepne_miejsca NUMBER;
         v_najblizszy_repertuar REF Repertuar;
         v_najblizsza_data DATE;
+        v_dostepne_miejsca_najblizszy NUMBER;
+        v_wybrane_miejsca Miejsca_Typ;
     BEGIN
         -- SprawdŸ u¿ytkownika
         DBMS_OUTPUT.PUT_LINE('Sprawdzenie u¿ytkownika: ' || p_email);
@@ -104,13 +106,87 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                     WHERE r.film_ref = v_film
                       AND r.data_rozpoczecia = v_najblizsza_data;
 
-                    DBMS_OUTPUT.PUT_LINE('Najbli¿szy dostêpny seans dla filmu ' || p_film_tytul || ' jest na datê: ' || TO_CHAR(v_najblizsza_data, 'YYYY-MM-DD HH24:MI'));
+                    -- SprawdŸ dostêpnoœæ miejsc w najbli¿szym seansie
+                    SELECT COUNT(*) INTO v_dostepne_miejsca_najblizszy
+                    FROM TABLE(
+                        SELECT s.miejsca 
+                        FROM Sala_table s
+                        WHERE REF(s) = (SELECT r.sala_ref FROM Repertuar_table r WHERE REF(r) = v_najblizszy_repertuar)
+                    )
+                    WHERE czy_zajete = 0;
+
+                    DBMS_OUTPUT.PUT_LINE('Najbli¿szy dostêpny seans dla filmu ' || p_film_tytul || ' jest na datê: ' || TO_CHAR(v_najblizsza_data, 'YYYY-MM-DD HH24:MI') || '. Dostêpne miejsca: ' || v_dostepne_miejsca_najblizszy);
                 ELSE
                     DBMS_OUTPUT.PUT_LINE('Nie ma ¿adnych dostêpnych seansów dla filmu ' || p_film_tytul);
                 END IF;
 
                 RETURN;
         END;
+
+        -- SprawdŸ dostêpnoœæ miejsc
+        DBMS_OUTPUT.PUT_LINE('Sprawdzanie dostêpnoœci miejsc w sali na dany seans');
+        SELECT COUNT(*) INTO v_dostepne_miejsca
+        FROM TABLE(
+            SELECT s.miejsca 
+            FROM Sala_table s
+            WHERE REF(s) = (SELECT r.sala_ref FROM Repertuar_table r WHERE REF(r) = v_repertuar)
+        )
+        WHERE czy_zajete = 0;
+
+        IF p_ilosc > v_dostepne_miejsca THEN
+            DBMS_OUTPUT.PUT_LINE('Brak wystarczaj¹cej liczby wolnych miejsc na dany seans. Dostêpne miejsca: ' || v_dostepne_miejsca);
+
+            -- Pobierz najbli¿szy seans dla tego filmu
+            SELECT MIN(r.data_rozpoczecia)
+            INTO v_najblizsza_data
+            FROM Repertuar_table r
+            WHERE r.film_ref = v_film
+              AND r.data_rozpoczecia > p_data;
+
+            IF v_najblizsza_data IS NOT NULL THEN
+                SELECT REF(r)
+                INTO v_najblizszy_repertuar
+                FROM Repertuar_table r
+                WHERE r.film_ref = v_film
+                  AND r.data_rozpoczecia = v_najblizsza_data;
+
+                -- SprawdŸ dostêpnoœæ miejsc w najbli¿szym seansie
+                SELECT COUNT(*) INTO v_dostepne_miejsca_najblizszy
+                FROM TABLE(
+                    SELECT s.miejsca 
+                    FROM Sala_table s
+                    WHERE REF(s) = (SELECT r.sala_ref FROM Repertuar_table r WHERE REF(r) = v_najblizszy_repertuar)
+                )
+                WHERE czy_zajete = 0;
+
+                DBMS_OUTPUT.PUT_LINE('Najbli¿szy dostêpny seans dla filmu ' || p_film_tytul || ' jest na datê: ' || TO_CHAR(v_najblizsza_data, 'YYYY-MM-DD HH24:MI'));
+            ELSE
+                DBMS_OUTPUT.PUT_LINE('Nie ma ¿adnych dostêpnych seansów dla filmu ' || p_film_tytul);
+            END IF;
+
+            RETURN;
+        END IF;
+
+        -- Wybierz miejsca do rezerwacji
+        SELECT CAST(COLLECT(Miejsce(m.miejsce_id, m.rzad, m.numer, 1)) AS Miejsca_Typ) INTO v_wybrane_miejsca
+        FROM TABLE(
+            SELECT s.miejsca 
+            FROM Sala_table s
+            WHERE REF(s) = (SELECT r.sala_ref FROM Repertuar_table r WHERE REF(r) = v_repertuar)
+        ) m
+        WHERE m.czy_zajete = 0
+        FETCH FIRST p_ilosc ROWS ONLY;
+
+        -- Aktualizuj status miejsc na zajête
+        FOR i IN 1..v_wybrane_miejsca.COUNT LOOP
+            UPDATE TABLE(
+                SELECT s.miejsca 
+                FROM Sala_table s 
+                WHERE REF(s) = (SELECT r.sala_ref FROM Repertuar_table r WHERE REF(r) = v_repertuar)
+            ) m
+            SET m.czy_zajete = 1
+            WHERE m.miejsce_id = v_wybrane_miejsca(i).miejsce_id;
+        END LOOP;
 
         -- Oblicz cenê z uwzglêdnieniem zni¿ki
         DBMS_OUTPUT.PUT_LINE('Obliczanie ceny z uwzglêdnieniem zni¿ki dla u¿ytkownika: ' || p_email);
