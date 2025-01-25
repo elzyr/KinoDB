@@ -115,7 +115,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                     )
                     WHERE czy_zajete = 0;
 
-                    DBMS_OUTPUT.PUT_LINE('Najbli¿szy dostêpny seans dla filmu ' || p_film_tytul || ' jest na datê: ' || TO_CHAR(v_najblizsza_data, 'YYYY-MM-DD HH24:MI') || '. Dostêpne miejsca: ' || v_dostepne_miejsca_najblizszy);
+                    DBMS_OUTPUT.PUT_LINE('Najbli¿szy dostêpny seans dla filmu ' || p_film_tytul || ' jest na datê: ' || TO_CHAR(v_najblizsza_data, 'YYYY-MM-DD HH24:MI'));
                 ELSE
                     DBMS_OUTPUT.PUT_LINE('Nie ma ¿adnych dostêpnych seansów dla filmu ' || p_film_tytul);
                 END IF;
