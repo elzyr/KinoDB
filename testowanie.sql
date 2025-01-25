@@ -75,6 +75,7 @@ BEGIN
         p_sala_id => 1, -- Zak³adaj¹c, ¿e ID sali to 1
         p_data_rozpoczecia => TO_DATE('2025-01-25 15:00', 'YYYY-MM-DD HH24:MI')
     );
+    
 
     DBMS_OUTPUT.PUT_LINE('Poprawne seanse dodane.');
 END;
@@ -132,3 +133,86 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('B³¹d: ' || SQLERRM);
 END;
 /
+
+
+-- dodawnie kleinta
+
+BEGIN
+    INSERT INTO Uzytkownik_table VALUES (
+        Uzytkownik(NULL, 'Jan', 'Kowalski', 30, 'jan.kowalski@example.com', 'standard')
+    );
+    
+    INSERT INTO Uzytkownik_table VALUES (
+        Uzytkownik(NULL, 'Anna', 'Nowak', 25, 'anna.nowak@example.com', 'premium')
+    );
+    
+    COMMIT;
+END;
+/
+
+BEGIN
+    INSERT INTO Uzytkownik_table VALUES (
+        Uzytkownik(
+            NULL, -- user_id zostanie automatycznie ustawiony przez wyzwalacz
+            'Piotr',
+            'Zieliñski',
+            40,
+            'piotr.zielinski@example.com',
+            'standard'
+        )
+    );
+    
+    COMMIT;
+END;
+/
+select * from Uzytkownik_table
+
+
+BEGIN
+    Klient_Pkg.UstawRoleUzytkownika(
+        p_email      => 'jan.kowalski@example.com',
+        p_nowa_rola  => 'premium'
+    );
+END;
+/
+
+BEGIN
+    Klient_Pkg.PokazSeanseNaDzien(TO_DATE('2025-01-25', 'YYYY-MM-DD'));
+END;
+/
+
+
+
+BEGIN
+    Klient_Pkg.ZarezerwujMiejsca(
+        p_email => 'jan.kowalski@example.com',
+        p_film_tytul => 'Wielka Przygoda',
+        p_ilosc => 2,
+        p_data => TO_DATE('2025-01-25 17:00', 'YYYY-MM-DD HH24:MI'),
+        p_preferencja_rzad => 1 
+    );
+END;
+/
+
+BEGIN
+    Klient_Pkg.AnulujRezerwacje(
+        p_email => 'jan.kowalski@example.com',
+        p_film_tytul => 'Wielka Przygoda',
+        p_data => TO_DATE('2025-01-26 15:00', 'YYYY-MM-DD HH24:MI')
+    );
+END;
+/
+
+BEGIN
+    Klient_Pkg.PokazRezerwacjeUzytkownika('jan.kowalski@example.com');
+END;
+
+
+
+SELECT * FROM Film_table WHERE tytul = 'Wielka Przygoda';
+
+SELECT * 
+FROM Repertuar_table r
+JOIN Film_table f ON REF(f) = r.film_ref
+JOIN Sala_table s ON REF(s) = r.sala_ref
+WHERE f.tytul = 'Wielka Przygoda' ;

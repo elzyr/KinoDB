@@ -604,19 +604,19 @@ DECLARE
     v_rzad NUMBER;
     v_numer NUMBER;
 BEGIN
-    -- Pobierz sala_id z powiÄ…zanego repertuaru
+    -- Pobierz sala_id z powi¹zanego repertuaru
     SELECT r.sala_ref.sala_id
     INTO v_sala_id
     FROM Repertuar_table r
     WHERE REF(r) = :NEW.repertuar_ref;
-    
+
     -- Iteruj po biletach i aktualizuj odpowiednie miejsca
     FOR bilet_rec IN (
         SELECT b.rzad, b.miejsce
         FROM Bilet_table b
         WHERE REF(b) IN (
             SELECT COLUMN_VALUE 
-            FROM TABLE(:OLD.bilety)
+            FROM TABLE(CAST(:OLD.bilety AS Bilety_Typ))
         )
     ) LOOP
         -- Oznacz miejsce jako wolne w nested table
@@ -630,6 +630,7 @@ BEGIN
     END LOOP;
 END;
 /
+
 
 -- Dodaj test triggera:
 DECLARE 
