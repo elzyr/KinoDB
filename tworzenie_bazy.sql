@@ -269,6 +269,80 @@ END;
 /
 
     
+-- Usuniêcie sekwencji, jeœli istniej¹
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE kategoria_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE sala_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE miejsce_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE uzytkownik_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE film_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE repertuar_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE bilet_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+BEGIN
+    EXECUTE IMMEDIATE 'DROP SEQUENCE rezerwacja_seq';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -2289 THEN
+            RAISE;
+        END IF;
+END;
+/
+
 -- -------------------------------
 -- Sekcja: Tworzenie sekwencji
 -- -------------------------------

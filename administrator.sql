@@ -1,45 +1,48 @@
--- Specyfikacja Pakietu admin_seanse
+-- Specyfikacja Pakietu admin_seanse z dodan¹ procedur¹ popularnosc_filmu
 CREATE OR REPLACE PACKAGE admin_seanse AS
 
-    -- Procedura dodaj¹ca nowy film
+    -- Istniej¹ce procedury
     PROCEDURE add_film(
-        p_tytul         IN VARCHAR2,
-        p_czas_trwania  IN NUMBER, -- w minutach
+        p_tytul          IN VARCHAR2,
+        p_czas_trwania   IN NUMBER, -- w minutach
         p_minimalny_wiek IN NUMBER,
-        p_kategoria_id  IN NUMBER
+        p_kategoria_id   IN NUMBER
     );
 
-    -- Procedura dodaj¹ca nowy seans
     PROCEDURE add_seans(
-        p_film_id          IN NUMBER,
-        p_sala_id          IN NUMBER,
-        p_data_rozpoczecia IN DATE
+        p_film_id           IN NUMBER,
+        p_sala_id           IN NUMBER,
+        p_data_rozpoczecia  IN DATE
     );
 
-    -- Procedura dodaj¹ca now¹ salê
     PROCEDURE add_sala(
-        p_nazwa           IN VARCHAR2,
-        p_ilosc_rzedow    IN NUMBER,
-        p_miejsca_w_rzedzie IN NUMBER
+        p_nazwa              IN VARCHAR2,
+        p_ilosc_rzedow       IN NUMBER,
+        p_miejsca_w_rzedzie  IN NUMBER
     );
 
-    -- Procedura dodaj¹ca now¹ kategoriê
     PROCEDURE add_kategoria(
-        p_nazwa           IN VARCHAR2
+        p_nazwa IN VARCHAR2
+    );
+
+    -- Nowa procedura do obliczania popularnoœci filmu
+    PROCEDURE popularnosc_filmu(
+        p_tytul IN VARCHAR2
     );
 
 END admin_seanse;
 /
+
 
 -- Implementacja Pakietu admin_seanse
 CREATE OR REPLACE PACKAGE BODY admin_seanse AS
 
     -- Procedura dodaj¹ca nowy film
     PROCEDURE add_film(
-        p_tytul         IN VARCHAR2,
-        p_czas_trwania  IN NUMBER,
+        p_tytul          IN VARCHAR2,
+        p_czas_trwania   IN NUMBER,
         p_minimalny_wiek IN NUMBER,
-        p_kategoria_id  IN NUMBER
+        p_kategoria_id   IN NUMBER
     ) IS
         v_kategoria_ref REF Kategoria;
     BEGIN
@@ -72,9 +75,9 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
         p_sala_id          IN NUMBER,
         p_data_rozpoczecia IN DATE
     ) IS
-        v_film_ref       REF Film;
-        v_sala_ref       REF Sala;
-        v_czas_trwania   NUMBER;
+        v_film_ref         REF Film;
+        v_sala_ref         REF Sala;
+        v_czas_trwania     NUMBER;
         v_data_zakonczenia DATE;
         v_existing_seans_count NUMBER;
     BEGIN
@@ -121,7 +124,6 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
                 (r.data_rozpoczecia BETWEEN p_data_rozpoczecia AND v_data_zakonczenia)
               );
 
-
         IF v_existing_seans_count > 0 THEN
             RAISE_APPLICATION_ERROR(-20003, 'Nowy seans koliduje z istniej¹cymi seansami w tej sali.');
         END IF;
@@ -144,9 +146,9 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
 
     -- Procedura dodaj¹ca now¹ salê
     PROCEDURE add_sala(
-        p_nazwa           IN VARCHAR2,
-        p_ilosc_rzedow    IN NUMBER,
-        p_miejsca_w_rzedzie IN NUMBER
+        p_nazwa              IN VARCHAR2,
+        p_ilosc_rzedow       IN NUMBER,
+        p_miejsca_w_rzedzie  IN NUMBER
     ) IS
         v_miejsca Miejsca_Typ := Miejsca_Typ();
         v_miejsce_id NUMBER := 1;
@@ -177,7 +179,7 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
 
     -- Procedura dodaj¹ca now¹ kategoriê
     PROCEDURE add_kategoria(
-        p_nazwa           IN VARCHAR2
+        p_nazwa IN VARCHAR2
     ) IS
     BEGIN
         -- Wstawienie nowej kategorii
@@ -191,4 +193,67 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
             RAISE_APPLICATION_ERROR(-20006, 'B³¹d podczas dodawania kategorii. SprawdŸ dane wejœciowe.');
     END add_kategoria;
 
+    -- Procedura do obliczania popularnoœci filmu
+    PROCEDURE popularnosc_filmu(
+        p_tytul IN VARCHAR2
+    ) IS
+        v_film_id      NUMBER;
+        v_film_ref     REF Film;
+        v_total_seats  NUMBER := 0;
+        v_sold_tickets NUMBER := 0;
+        v_percentage   NUMBER;
+    BEGIN
+        -- Pobranie film_id na podstawie tytu³u
+        SELECT film_id
+        INTO v_film_id
+        FROM Film_table
+        WHERE tytul = p_tytul;
+
+        -- Pobranie referencji do filmu
+        SELECT REF(f)
+        INTO v_film_ref
+        FROM Film_table f
+        WHERE f.film_id = v_film_id;
+
+        -- Obliczenie ca³kowitej liczby miejsc dostêpnych w ci¹gu ostatnich 7 dni
+        SELECT NVL(COUNT(*), 0)
+        INTO v_total_seats
+        FROM Repertuar_table r
+        JOIN Sala_table s ON r.sala_ref = REF(s)
+        CROSS JOIN TABLE(s.miejsca) m
+        WHERE r.film_ref = v_film_ref
+          AND r.data_rozpoczecia >= SYSDATE - 7;
+
+        -- Obliczenie liczby sprzedanych biletów w ci¹gu ostatnich 7 dni
+        SELECT NVL(COUNT(*), 0)
+        INTO v_sold_tickets
+        FROM Bilet_table b
+        WHERE b.seans_ref IN (
+            SELECT REF(r_inner)
+            FROM Repertuar_table r_inner
+            WHERE r_inner.film_ref = v_film_ref
+              AND r_inner.data_rozpoczecia >= SYSDATE - 7
+        );
+
+        -- Obliczenie procentowego zape³nienia miejsc
+        IF v_total_seats > 0 THEN
+            v_percentage := (v_sold_tickets / v_total_seats) * 100;
+        ELSE
+            v_percentage := 0;
+        END IF;
+
+        -- Wyœwietlenie wyniku
+        DBMS_OUTPUT.PUT_LINE(
+            'Popularnoœæ filmu "' || p_tytul || '" w ci¹gu ostatnich 7 dni: ' ||
+            TO_CHAR(v_percentage, 'FM99990.00') || '%'
+        );
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Nie znaleziono filmu o nazwie "' || p_tytul || '".');
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Wyst¹pi³ b³¹d: ' || SQLERRM);
+    END popularnosc_filmu;
+
 END admin_seanse;
+/
