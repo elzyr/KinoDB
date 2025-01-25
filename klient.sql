@@ -1,268 +1,30 @@
--- -------------------------------
--- Sekcja: Tworzenie pakietï¿½w
--- -------------------------------
+-- Zintegrowany pakiet do obs³ugi klienta
+CREATE OR REPLACE PACKAGE Klient_Pkg AS
+    -- Wyœwietlanie seansów z danego dnia
+    PROCEDURE PokazSeanseNaDzien(p_data DATE);
 
--- Pakiet do obsï¿½ugi rezerwacji
-CREATE OR REPLACE PACKAGE Rezerwacja_Pkg AS
-    PROCEDURE SprawdzWiekUzytkownika (v_uzytkownik REF Uzytkownik, v_film REF Film);
-    PROCEDURE SprawdzUzytkownika (p_email VARCHAR2, v_uzytkownik OUT REF Uzytkownik);
-    PROCEDURE SprawdzFilm (p_film_tytul VARCHAR2, v_film OUT REF Film);
-    FUNCTION SprawdzDostepneMiejsca (
-        p_repertuar REF Repertuar,
-        p_preferencja_rzad NUMBER DEFAULT NULL,
-        p_ilosc NUMBER,
-        v_miejsca OUT SYS_REFCURSOR
-    ) RETURN BOOLEAN;
-    PROCEDURE UtworzRezerwacje (
+    -- Rezerwowanie miejsc
+    PROCEDURE ZarezerwujMiejsca(
         p_email VARCHAR2,
         p_film_tytul VARCHAR2,
         p_ilosc NUMBER,
         p_preferencja_rzad NUMBER DEFAULT NULL
     );
-END Rezerwacja_Pkg;
-/
 
+    -- Anulowanie rezerwacji
+    PROCEDURE AnulujRezerwacje(p_email VARCHAR2, p_film_tytul VARCHAR2, p_data DATE);
 
-        
-CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
-
-    -- Procedura sprawdzajï¿½ca istnienie uï¿½ytkownika
-    PROCEDURE SprawdzUzytkownika (p_email VARCHAR2, v_uzytkownik OUT REF Uzytkownik) IS
-    BEGIN
-        SELECT REF(u)
-        INTO v_uzytkownik
-        FROM Uzytkownik_table u
-        WHERE u.email = p_email;
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20001, 'Uï¿½ytkownik o podanym e-mailu nie istnieje.');
-    END SprawdzUzytkownika;
-
-    -- Procedura sprawdzajï¿½ca istnienie filmu
-    PROCEDURE SprawdzFilm (p_film_tytul VARCHAR2, v_film OUT REF Film) IS
-    BEGIN
-        SELECT REF(f)
-        INTO v_film
-        FROM Film_table f
-        WHERE f.tytul = p_film_tytul;
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule nie istnieje.');
-    END SprawdzFilm;
-
-    -- Procedura sprawdzajï¿½ca wiek uï¿½ytkownika wzglï¿½dem wymagaï¿½ filmu
-    PROCEDURE SprawdzWiekUzytkownika (
-        v_uzytkownik REF Uzytkownik,
-        v_film REF Film
-    ) IS
-        v_wiek NUMBER;
-        v_minimalny_wiek NUMBER;
-    BEGIN
-        -- Pobierz wiek uï¿½ytkownika
-        SELECT u.wiek INTO v_wiek
-        FROM Uzytkownik_table u
-        WHERE REF(u) = v_uzytkownik;
-
-        -- Pobierz minimalny wiek dla filmu
-        SELECT f.minimalny_wiek INTO v_minimalny_wiek
-        FROM Film_table f
-        WHERE REF(f) = v_film;
-
-        -- Sprawdï¿½, czy uï¿½ytkownik speï¿½nia minimalny wiek
-        IF v_wiek < v_minimalny_wiek THEN
-            RAISE_APPLICATION_ERROR(-20007, 'Uï¿½ytkownik nie speï¿½nia wymagaï¿½ wiekowych dla wybranego filmu.');
-        END IF;
-    END SprawdzWiekUzytkownika;
-
-    -- Funkcja sprawdzajï¿½ca dostï¿½pnoï¿½ï¿½ miejsc
-    FUNCTION SprawdzDostepneMiejsca (
-        p_repertuar REF Repertuar,
-        p_preferencja_rzad NUMBER DEFAULT NULL,
-        p_ilosc NUMBER,
-        v_miejsca OUT SYS_REFCURSOR
-    ) RETURN BOOLEAN IS
-        v_sala_id NUMBER;
-        v_prev_numer NUMBER := NULL;
-        v_prev_rzad NUMBER := NULL;
-        v_count_sequential NUMBER := 0;
-        v_rzad NUMBER;
-        v_numer NUMBER;
-    BEGIN
-        -- Pobierz sala_id z powiï¿½zanego repertuaru
-        SELECT r.sala_ref.sala_id
-          INTO v_sala_id
-          FROM Repertuar_table r
-         WHERE REF(r) = p_repertuar;
-    
-        -- Otwï¿½rz kursor z dostï¿½pnymi miejscami
-        OPEN v_miejsca FOR
-            SELECT m.rzad, m.numer
-            FROM TABLE(
-                SELECT s.miejsca
-                FROM Sala_table s
-                WHERE s.sala_id = v_sala_id
-            ) m
-            WHERE m.czy_zajete = 0 -- Sprawdzamy tylko wolne miejsca
-              AND (p_preferencja_rzad IS NULL OR m.rzad = p_preferencja_rzad) -- Uwzglï¿½dniamy preferencjï¿½ rzï¿½du
-            ORDER BY m.rzad, m.numer;
-    
-        -- Sprawdï¿½, czy sï¿½ wystarczajï¿½ce miejsca obok siebie
-        LOOP
-            FETCH v_miejsca INTO v_rzad, v_numer;
-            EXIT WHEN v_miejsca%NOTFOUND;
-    
-            -- Sprawdï¿½, czy miejsca sï¿½ w tym samym rzï¿½dzie
-            IF v_prev_rzad IS NULL THEN
-                v_prev_rzad := v_rzad; -- Ustaw pierwszy rzï¿½d
-            ELSIF v_prev_rzad != v_rzad THEN
-                v_count_sequential := 1; -- Resetuj licznik, jeï¿½li zmieniï¿½ siï¿½ rzï¿½d
-                v_prev_rzad := v_rzad;
-            END IF;
-    
-            -- Sprawdï¿½ ciï¿½gï¿½oï¿½ï¿½ miejsc
-            IF v_prev_numer IS NULL THEN
-                v_count_sequential := 1; -- Rozpocznij odliczanie
-            ELSIF v_numer = v_prev_numer + 1 THEN
-                v_count_sequential := v_count_sequential + 1; -- Zwiï¿½ksz licznik ciï¿½gï¿½ych miejsc
-            ELSE
-                v_count_sequential := 1; -- Reset licznika, jeï¿½li brak ciï¿½gï¿½oï¿½ci
-            END IF;
-    
-            -- Jeï¿½li znaleziono wystarczajï¿½cï¿½ liczbï¿½ miejsc
-            IF v_count_sequential = p_ilosc THEN
-                RETURN TRUE;
-            END IF;
-    
-            -- Zapisz poprzednie wartoï¿½ci
-            v_prev_numer := v_numer;
-        END LOOP;
-    
-        -- Jeï¿½li nie znaleziono wystarczajï¿½cych miejsc
-        RETURN FALSE;
-    END SprawdzDostepneMiejsca;
-
-
-    -- Procedura tworzï¿½ca rezerwacjï¿½
-    PROCEDURE UtworzRezerwacje (
-    p_email VARCHAR2,
-    p_film_tytul VARCHAR2,
-    p_ilosc NUMBER,
-    p_preferencja_rzad NUMBER DEFAULT NULL
-) IS
-    v_uzytkownik REF Uzytkownik;
-    v_film REF Film;
-    v_repertuar REF Repertuar;
-    v_rezerwacja_id NUMBER;
-    v_rezerwacja_ref REF Rezerwacja;
-    v_cena NUMBER := 50;
-    v_znizka NUMBER := 1;
-    v_cena_laczna NUMBER;
-BEGIN
-    -- Sprawdï¿½ uï¿½ytkownika
-    SprawdzUzytkownika(p_email, v_uzytkownik);
-
-    -- Sprawdï¿½ film
-    SprawdzFilm(p_film_tytul, v_film);
-
-    -- Pobierz zniï¿½kï¿½ dla uï¿½ytkownika
-    SELECT CASE WHEN u.rola = 'premium' THEN 0.9 ELSE 1 END
-    INTO v_znizka
-    FROM Uzytkownik_table u 
-    WHERE REF(u) = v_uzytkownik;
-
-    -- Znajdï¿½ repertuar (tu powinien byï¿½ wywoï¿½any odpowiedni blok logiczny)
-
-    -- Oblicz cenï¿½ caï¿½kowitï¿½
-    v_cena_laczna := v_cena * p_ilosc * v_znizka;
-
-    -- Utwï¿½rz rezerwacjï¿½
-    SELECT NVL(MAX(rezerwacja_id), 0) + 1 INTO v_rezerwacja_id FROM Rezerwacja_table;
-
-    INSERT INTO Rezerwacja_table
-    VALUES (
-        Rezerwacja(
-            v_rezerwacja_id, 
-            SYSDATE, 
-            v_cena_laczna, -- Cena caï¿½kowita
-            0, 
-            v_repertuar, 
-            v_uzytkownik, 
-            Bilety_Typ()
-        )
+    -- Obs³uga subskrypcji (zmiana roli u¿ytkownika)
+    PROCEDURE UstawRoleUzytkownika(
+        p_email VARCHAR2,
+        p_nowa_rola VARCHAR2
     );
-
-    COMMIT;
-END UtworzRezerwacje;
-
-
-END Rezerwacja_Pkg;
+END Klient_Pkg;
 /
 
+CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
-
-CREATE OR REPLACE PACKAGE AnulujRezerwacje_Pkg AS
-    PROCEDURE AnulujRezerwacje (p_rezerwacja_id NUMBER);
-END AnulujRezerwacje_Pkg;
-/
-
-        
-CREATE OR REPLACE PACKAGE BODY AnulujRezerwacje_Pkg AS
-    PROCEDURE AnulujRezerwacje (p_rezerwacja_id NUMBER) IS
-        v_bilety_cursor SYS_REFCURSOR; -- Kursor na bilety
-        v_rzad NUMBER;
-        v_numer NUMBER;
-        v_sala_id NUMBER;
-    BEGIN
-        -- Aktualizuj rezerwacjï¿½ na anulowanï¿½
-        UPDATE Rezerwacja_table
-        SET czy_anulowane = 1
-        WHERE rezerwacja_id = p_rezerwacja_id;
-
-        -- Pobierz bilety powiï¿½zane z rezerwacjï¿½
-        OPEN v_bilety_cursor FOR
-            SELECT b.rzad, b.miejsce, r.sala_ref.sala_id
-            FROM Bilet_table b
-            JOIN Repertuar_table r ON REF(r) = b.seans_ref
-            WHERE b.bilet_id IN (
-                SELECT COLUMN_VALUE.bilet_id
-                FROM TABLE(
-                    SELECT r.bilety FROM Rezerwacja_table r WHERE r.rezerwacja_id = p_rezerwacja_id
-                )
-            );
-
-        -- Zwolnij miejsca w sali
-        LOOP
-            FETCH v_bilety_cursor INTO v_rzad, v_numer, v_sala_id;
-            EXIT WHEN v_bilety_cursor%NOTFOUND;
-
-            UPDATE TABLE(
-                SELECT s.miejsca
-                FROM Sala_table s
-                WHERE s.sala_id = v_sala_id
-            )
-            SET czy_zajete = 0
-            WHERE rzad = v_rzad AND numer = v_numer;
-        END LOOP;
-
-        CLOSE v_bilety_cursor;
-    END AnulujRezerwacje;
-END AnulujRezerwacje_Pkg;
-/
-
-
-CREATE OR REPLACE PACKAGE Repertuar_Pkg AS
-    PROCEDURE PokazSeanseNaDzien(p_data DATE);
-    PROCEDURE DodajSeans(
-        p_film_id NUMBER,
-        p_sala_id NUMBER,
-        p_data_rozpoczecia DATE
-    );
-END Repertuar_Pkg;
-/
-
-
-        
-CREATE OR REPLACE PACKAGE BODY Repertuar_Pkg AS
+    -- Wyœwietlanie seansów z danego dnia
     PROCEDURE PokazSeanseNaDzien(p_data DATE) IS
     BEGIN
         FOR r IN (
@@ -280,63 +42,140 @@ CREATE OR REPLACE PACKAGE BODY Repertuar_Pkg AS
         END LOOP;
     END PokazSeanseNaDzien;
 
-    PROCEDURE DodajSeans(
-        p_film_id NUMBER,
-        p_sala_id NUMBER,
-        p_data_rozpoczecia DATE
+    -- Rezerwowanie miejsc
+    PROCEDURE ZarezerwujMiejsca(
+        p_email VARCHAR2,
+        p_film_tytul VARCHAR2,
+        p_ilosc NUMBER,
+        p_preferencja_rzad NUMBER DEFAULT NULL
     ) IS
+        v_uzytkownik REF Uzytkownik;
         v_film REF Film;
-        v_sala REF Sala;
-        v_new_repertuar_id NUMBER;
+        v_repertuar REF Repertuar;
+        v_rezerwacja_id NUMBER;
+        v_cena NUMBER := 50;
+        v_znizka NUMBER := 1;
+        v_cena_laczna NUMBER;
+        v_miejsca SYS_REFCURSOR;
     BEGIN
-        -- Sprawdï¿½, czy film istnieje
-        BEGIN
-            SELECT REF(f) INTO v_film FROM Film_table f WHERE f.film_id = p_film_id;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20001, 'Film o podanym ID nie istnieje.');
-        END;
+        -- SprawdŸ u¿ytkownika
+        SELECT REF(u) INTO v_uzytkownik FROM Uzytkownik_table u WHERE u.email = p_email;
 
-        -- Sprawdï¿½, czy sala istnieje
-        BEGIN
-            SELECT REF(s) INTO v_sala FROM Sala_table s WHERE s.sala_id = p_sala_id;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20002, 'Sala o podanym ID nie istnieje.');
-        END;
+        -- SprawdŸ film
+        SELECT REF(f) INTO v_film FROM Film_table f WHERE f.tytul = p_film_tytul;
 
-        -- Sprawdï¿½ konflikt czasowy w sali
-        DECLARE
-            v_conflict_count NUMBER;
-        BEGIN
-            SELECT COUNT(*)
-              INTO v_conflict_count
-              FROM Repertuar_table r
-             WHERE r.sala_ref = v_sala
-               AND ABS((r.data_rozpoczecia - p_data_rozpoczecia) * 24 * 60) < 120; -- Konflikt w czasie 2h
+        -- Pobierz repertuar
+        SELECT REF(r)
+        INTO v_repertuar
+        FROM Repertuar_table r
+        WHERE r.film_ref = v_film
+          AND r.data_rozpoczecia > SYSDATE
+        FETCH FIRST 1 ROWS ONLY;
 
-            IF v_conflict_count > 0 THEN
-                RAISE_APPLICATION_ERROR(-20003, 'W tej sali jest juï¿½ seans o zbliï¿½onej godzinie.');
-            END IF;
-        END;
+        -- Oblicz cenê z uwzglêdnieniem zni¿ki
+        SELECT CASE WHEN u.rola = 'premium' THEN 0.9 ELSE 1 END
+        INTO v_znizka
+        FROM Uzytkownik_table u
+        WHERE REF(u) = v_uzytkownik;
 
-        -- Pobierz nowe ID dla repertuaru
-        SELECT NVL(MAX(repertuar_id), 0) + 1 INTO v_new_repertuar_id FROM Repertuar_table;
+        v_cena_laczna := v_cena * p_ilosc * v_znizka;
 
-        -- Dodaj seans
-        BEGIN
-            INSERT INTO Repertuar_table
-            VALUES (
-                Repertuar(v_new_repertuar_id, v_film, v_sala, p_data_rozpoczecia)
-            );
+        -- Utwórz rezerwacjê
+        SELECT NVL(MAX(rezerwacja_id), 0) + 1 INTO v_rezerwacja_id FROM Rezerwacja_table;
 
-            COMMIT;
-            DBMS_OUTPUT.PUT_LINE('Seans zostaï¿½ pomyï¿½lnie dodany: ID ' || v_new_repertuar_id);
-        EXCEPTION
-            WHEN OTHERS THEN
-                ROLLBACK;
-                RAISE_APPLICATION_ERROR(-20004, 'Nie udaï¿½o siï¿½ dodaï¿½ seansu. Przyczyna: ' || SQLERRM);
-        END;
-    END DodajSeans;
-END Repertuar_Pkg;
-/
+        INSERT INTO Rezerwacja_table
+        VALUES (
+            Rezerwacja(
+                v_rezerwacja_id, 
+                SYSDATE, 
+                v_cena_laczna, 
+                0, 
+                v_repertuar, 
+                v_uzytkownik, 
+                Bilety_Typ()
+            )
+        );
+
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Rezerwacja zosta³a pomyœlnie utworzona: ID ' || v_rezerwacja_id);
+    END ZarezerwujMiejsca;
+
+    -- Anulowanie rezerwacji
+    PROCEDURE AnulujRezerwacje(p_email VARCHAR2, p_film_tytul VARCHAR2, p_data DATE) IS
+        v_uzytkownik REF Uzytkownik;
+        v_repertuar REF Repertuar;
+        v_rezerwacja_id NUMBER;
+        v_bilety_cursor SYS_REFCURSOR;
+        v_rzad NUMBER;
+        v_numer NUMBER;
+        v_sala_id NUMBER;
+    BEGIN
+        -- SprawdŸ u¿ytkownika
+        SELECT REF(u) INTO v_uzytkownik FROM Uzytkownik_table u WHERE u.email = p_email;
+
+        -- SprawdŸ repertuar
+        SELECT REF(r)
+        INTO v_repertuar
+        FROM Repertuar_table r
+        JOIN Film_table f ON r.film_ref = REF(f)
+        WHERE f.tytul = p_film_tytul AND TRUNC(r.data_rozpoczecia) = TRUNC(p_data);
+
+        -- ZnajdŸ rezerwacjê
+        SELECT r.rezerwacja_id
+        INTO v_rezerwacja_id
+        FROM Rezerwacja_table r
+        WHERE r.uzytkownik_ref = v_uzytkownik
+          AND r.repertuar_ref = v_repertuar;
+
+        -- Aktualizuj rezerwacjê na anulowan¹
+        UPDATE Rezerwacja_table
+        SET czy_anulowane = 1
+        WHERE rezerwacja_id = v_rezerwacja_id;
+
+        -- Pobierz bilety powi¹zane z rezerwacj¹
+-- Pobierz bilety powi¹zane z rezerwacj¹
+OPEN v_bilety_cursor FOR
+    SELECT b.rzad, b.miejsce, rp.sala_ref.sala_id
+    FROM Bilet_table b
+    JOIN Rezerwacja_table r ON b.bilet_id MEMBER OF r.bilety
+    JOIN Repertuar_table rp ON r.repertuar_ref = REF(rp)
+    WHERE rp.repertuar_id = v_rezerwacja_id;
+
+
+        -- Zwolnij miejsca w sali
+        LOOP
+            FETCH v_bilety_cursor INTO v_rzad, v_numer, v_sala_id;
+            EXIT WHEN v_bilety_cursor%NOTFOUND;
+
+            UPDATE TABLE(
+                SELECT s.miejsca
+                FROM Sala_table s
+                WHERE s.sala_id = v_sala_id
+            )
+            SET czy_zajete = 0
+            WHERE rzad = v_rzad AND numer = v_numer;
+        END LOOP;
+
+        CLOSE v_bilety_cursor;
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Rezerwacja filmu "' || p_film_tytul || '" z dnia ' || TO_CHAR(p_data, 'YYYY-MM-DD') || ' zosta³a anulowana.');
+    END AnulujRezerwacje;
+
+    -- Obs³uga subskrypcji (zmiana roli u¿ytkownika)
+PROCEDURE UstawRoleUzytkownika(
+    p_email VARCHAR2,
+    p_nowa_rola VARCHAR2
+) IS
+BEGIN
+    IF p_nowa_rola NOT IN ('premium', 'standard') THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Nieprawid³owa rola: ' || p_nowa_rola || '. Dozwolone wartoœci to ''premium'' lub ''standard''.');
+    END IF;
+
+    UPDATE Uzytkownik_table
+    SET rola = p_nowa_rola
+    WHERE email = p_email;
+
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Rola u¿ytkownika ' || p_email || ' zosta³a zaktualizowana na: ' || p_nowa_rola);
+END UstawRoleUzytkownika;
+END Klient_Pkg;
