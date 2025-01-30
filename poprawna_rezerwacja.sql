@@ -17,6 +17,9 @@ begin
         p_ilosc_rzedow => 5,
         p_miejsca_w_rzedzie => 10
     );
+end;
+/
+begin
         -- Dodaj film
     admin_seanse.add_film(
         p_tytul => 'Film A',
@@ -24,12 +27,13 @@ begin
         p_minimalny_wiek => 12,
         p_kategoria_id => 1 -- Zak³adaj¹c, ¿e istnieje kategoria o ID 1
     );
-
+end;
+begin
     -- Dodaj seans
     admin_seanse.add_seans(
         p_film_id => 1, -- Zak³adaj¹c, ¿e ID filmu to 1
         p_sala_id => 1, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2026-01-30 15:00', 'YYYY-MM-DD HH24:MI')
+        p_data_rozpoczecia => TO_DATE('2026-01-30 12:00', 'YYYY-MM-DD HH24:MI')
     );
 end;
 /

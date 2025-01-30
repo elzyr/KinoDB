@@ -125,7 +125,7 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
               );
 
         IF v_existing_seans_count > 0 THEN
-            RAISE_APPLICATION_ERROR(-20003, 'Nowy seans koliduje z istniej¹cymi seansami w tej sali.');
+            RAISE_APPLICATION_ERROR(-20002, 'Nowy seans koliduje z istniej¹cymi seansami w tej sali.');
         END IF;
 
         -- Wstawienie nowego seansu (id generowane automatycznie przez sekwencjê)
@@ -138,10 +138,15 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
             v_sala_ref,
             p_data_rozpoczecia
         );
+            DBMS_OUTPUT.PUT_LINE('przeszlo dodawanie');
+EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Seans koliduje z istniej¹cymi seansami w tej sali.');
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono filmu lub sali.');
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Nieznany b³¹d: ' || SQLERRM);
 
-    EXCEPTION
-        WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20004, 'B³¹d podczas dodawania seansu. SprawdŸ dane wejœciowe.');
     END add_seans;
 
     -- Procedura dodaj¹ca now¹ salê
