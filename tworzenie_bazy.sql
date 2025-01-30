@@ -558,13 +558,12 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
     MEMBER FUNCTION data_zakonczenia RETURN DATE IS
         czas_trwania_filmu NUMBER;
     BEGIN
-    
         SELECT f.czas_trwania 
           INTO czas_trwania_filmu
           FROM Film_table f
          WHERE REF(f) = SELF.film_ref;
 
-        RETURN SELF.data_rozpoczecia + (czas_trwania_filmu + 30) / 1440;
+        RETURN SELF.data_rozpoczecia + ((czas_trwania_filmu + 30) / 1440);
     END data_zakonczenia;
 END;
 /
