@@ -1,5 +1,5 @@
 SET SERVEROUTPUT ON;
-CREATE OR REPLACE PACKAGE Rezerwacja_Pkg AS
+CREATE OR REPLACE PACKAGE Klient_Pkg AS
 PROCEDURE ZarezerwujSeans(
     p_email VARCHAR2,
     p_tytul VARCHAR2,
@@ -21,13 +21,52 @@ PROCEDURE ZarezerwujSeans(
     PROCEDURE PokazSeanse(
         p_data_seansu DATE
     );
-END Rezerwacja_Pkg;
+    
+    PROCEDURE ZmienTypKonta(
+        p_email VARCHAR2,
+        p_typ_konta VARCHAR2
+    );
+    
+    PROCEDURE SprawdzWiek(
+    p_email VARCHAR2,
+    p_tytul VARCHAR2
+);
+
+
+END Klient_Pkg;
 /
 
 
 
 
-CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
+
+CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
+PROCEDURE SprawdzWiek(
+    p_email VARCHAR2,
+    p_tytul VARCHAR2
+) IS
+    v_wiek_usera NUMBER;
+    v_wiek_filmu NUMBER;
+BEGIN
+    -- Pobranie wieku u¿ytkownika
+    SELECT  u.wiek
+    INTO v_wiek_usera
+    FROM Uzytkownik_table u
+    WHERE u.email = p_email;
+    
+    -- Pobranie wymaganego wieku dla filmu
+    SELECT MIN(f.minimalny_wiek) 
+    INTO v_wiek_filmu
+    FROM Film_table f 
+    WHERE f.tytul = p_tytul
+    FETCH FIRST 1 ROW ONLY;
+    
+    -- Sprawdzenie wieku u¿ytkownika
+    IF v_wiek_usera < v_wiek_filmu THEN
+        RAISE_APPLICATION_ERROR(-20008, 'U¿ytkownik nie spe³nia wymaganego wieku dla tego filmu.');
+    END IF;
+END SprawdzWiek;
+
 PROCEDURE ZarezerwujSeans(
     p_email VARCHAR2,
     p_tytul VARCHAR2,
@@ -42,6 +81,14 @@ PROCEDURE ZarezerwujSeans(
     v_uzytkownik_ref REF Uzytkownik;
     v_miejsce NUMBER;
 BEGIN
+            -- Sprawdzenie wieku u¿ytkownika przed rezerwacj¹
+    BEGIN
+        SprawdzWiek(p_email, p_tytul);
+            EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('User nie spelnia minimalnego wieku by pojsc na film' );
+            RETURN; -- Przerywamy rezerwacjê jeœli u¿ytkownik nie spe³nia wymagañ wiekowych
+    END;
         -- Pobierz repertuar_id na podstawie tytu³u filmu
         SELECT r.repertuar_id
         INTO v_repertuar_id
@@ -109,6 +156,11 @@ AND EXISTS (
     AND r.sala_ref.sala_id = v_sala_id
 );
         END LOOP;
+        EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono filmu lub sali.');
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Nieznany b³¹d: ' || SQLERRM);
     END ZarezerwujSeans;
     
     
@@ -219,8 +271,35 @@ BEGIN
     END LOOP;
 END PokazSeanse;
 
+PROCEDURE ZmienTypKonta(
+    p_email VARCHAR2,
+    p_typ_konta VARCHAR2
+) IS
+    v_count NUMBER := 0;
+BEGIN
+    -- Sprawdzenie, czy u¿ytkownik istnieje
+    SELECT COUNT(*) INTO v_count FROM Uzytkownik_table WHERE email = p_email;
+    IF v_count = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('U¿ytkownik o podanym emailu nie istnieje.');
+        RETURN;
+    END IF;
+    
+    -- Sprawdzenie, czy podany typ konta jest poprawny
+    IF p_typ_konta NOT IN ('standard', 'premium') THEN
+        DBMS_OUTPUT.PUT_LINE('Niepoprawny typ konta. Dozwolone wartoœci: standard, premium.');
+        RETURN;
+    END IF;
+    
+    -- Aktualizacja typu konta u¿ytkownika
+    UPDATE Uzytkownik_table
+    SET rola = p_typ_konta
+    WHERE email = p_email;
+    
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Typ konta u¿ytkownika ' || p_email || ' zosta³ zmieniony na ' || p_typ_konta);
+END ZmienTypKonta;
 
-END Rezerwacja_Pkg;
+END Klient_Pkg;
 /
 
 
