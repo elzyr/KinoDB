@@ -116,7 +116,6 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             DECLARE
                 miejsce_rec Miejsce;
             BEGIN
-                -- Znajdz wolne miejsce
                 BEGIN
                     SELECT VALUE(m) INTO miejsce_rec
                     FROM TABLE(
@@ -136,13 +135,13 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                 -- Dodanie biletu do nested table
                 bilety_kolekcja.EXTEND;
                 bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
-                    current_bilet_id,          -- Reklamacje przypisany bilet_id, zaczynamy od 1
+                    current_bilet_id,        
                     50 * rabat,
                     preferencja_rzedu,
                     miejsce_rec.numer
                 );
 
-                -- Zaznacz miejsce jako zajete
+                -- Miejsce zajete
                 UPDATE TABLE(
                     SELECT s.miejsca FROM Sala_table s
                     WHERE s.sala_id = id_sali
