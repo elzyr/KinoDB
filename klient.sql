@@ -238,7 +238,7 @@ BEGIN
     FROM Uzytkownik_table u
     WHERE u.email = email_uzytkownika;
     
-    -- Sprawdzenie czy uzytkownik ma rezerwacje
+    -- Sprawdzenie czy u¿ytkownik ma rezerwacje
     SELECT COUNT(*)
     INTO ilosc_rezerwacji
     FROM Rezerwacja_table r
@@ -249,13 +249,15 @@ BEGIN
         RETURN;
     END IF;
     
+    -- Pobieramy rezerwacje u¿ytkownika
     FOR r IN (
         SELECT r.rezerwacja_id, 
                f.tytul, 
                rep.data_rozpoczecia, 
                TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu,
                r.cena_laczna, 
-               r.czy_anulowane
+               r.czy_anulowane,
+               rep.repertuar_id  -- Klucz do po³¹czenia z biletami
         FROM Rezerwacja_table r
         JOIN Repertuar_table rep ON REF(rep) = r.repertuar_ref
         JOIN Film_table f ON REF(f) = rep.film_ref
@@ -273,13 +275,16 @@ BEGIN
         FOR b IN (
             SELECT b.rzad, b.miejsce
             FROM Bilet_table b
-            WHERE b.seans_ref = (SELECT REF(rep) FROM Repertuar_table rep WHERE rep.repertuar_id = r.rezerwacja_id)
+            WHERE b.seans_ref = (SELECT REF(rep) 
+                                 FROM Repertuar_table rep 
+                                 WHERE rep.repertuar_id = r.repertuar_id)
         ) LOOP
-            DBMS_OUTPUT.PUT_LINE(' ---Zajete miejsce: Rzad ' || b.rzad || ', Miejsce ' || b.miejsce);
+            DBMS_OUTPUT.PUT_LINE(' -> Zajête miejsce: Rz¹d ' || b.rzad || ', Miejsce ' || b.miejsce);
         END LOOP;
     END LOOP;
     DBMS_OUTPUT.PUT_LINE('------------------------------------------');
 END Pokaz_Rezerwacje;
+
 
 
 
