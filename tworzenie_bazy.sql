@@ -564,7 +564,7 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
           FROM Film_table f
          WHERE REF(f) = SELF.film_ref;
 
-        RETURN SELF.data_rozpoczecia + data_rozpoczecia_filmu + (czas_trwania_filmu + 30) / 1440;
+        RETURN SELF.data_rozpoczecia + (czas_trwania_filmu + 30) / 1440;
     END data_zakonczenia;
 END;
 /
