@@ -95,7 +95,6 @@ CREATE OR REPLACE TYPE Repertuar AS OBJECT (
 CREATE OR REPLACE TYPE Bilet AS OBJECT (
     bilet_id NUMBER,
     cena NUMBER(5,2),
-    seans_ref REF Repertuar,
     rzad NUMBER,
     miejsce NUMBER
 );
@@ -213,7 +212,7 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
         FROM Film_table f
         WHERE REF(f) = film_ref;
         
-        RETURN data_rozpoczecia + (czas_trwania + 30)/1440;
+        RETURN data_rozpoczecia + (czas_trwania + 30)/1440; --(24h w minutach)
     END;
 END;
 /

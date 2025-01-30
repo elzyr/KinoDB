@@ -43,7 +43,6 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         wiek_uzytkownika NUMBER;
         wymagany_wiek_filmu NUMBER;
     BEGIN
-        -- Pobranie wieku u¿ytkownika
         SELECT u.wiek INTO wiek_uzytkownika
         FROM Uzytkownik_table u
         WHERE u.email = email_uzytkownika;
@@ -75,12 +74,10 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         bilety_kolekcja Bilety_Typ := Bilety_Typ();
         rabat NUMBER := 1.0;
         typ_konta VARCHAR2(20);
-        
         current_bilet_id NUMBER := 0;
     BEGIN
         -- Sprawdzenie wieku
         Sprawdz_Wiek(email_uzytkownika, tytul_filmu);
-
        
         BEGIN
             SELECT rola INTO typ_konta
@@ -90,7 +87,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             WHEN NO_DATA_FOUND THEN
                 RAISE_APPLICATION_ERROR(-20009, 'Uzytkownik nie istnieje.');
         END;
- -- Sprawdzenie rabatu
+
         IF typ_konta = 'premium' THEN
             rabat := 0.9;
         END IF;
@@ -114,12 +111,6 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                 RAISE_APPLICATION_ERROR(-20010, 'Nie znaleziono seansu.');
         END;
 
-
-        SELECT NVL(MAX(b.bilet_id), 0) INTO current_bilet_id
-        FROM Rezerwacja_table r
-        CROSS JOIN TABLE(r.bilety) b
-        WHERE r.repertuar_ref = ref_repertuar;
-
         -- Rezerwacja miejsc
         FOR i IN 1..ilosc_miejsc_do_zarezerwowania LOOP
             DECLARE
@@ -134,7 +125,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                     ) m
                     WHERE m.rzad = preferencja_rzedu
                     AND m.czy_zajete = 0
-                    AND ROWNUM = 1;
+                    FETCH FIRST 1 ROWS ONLY;
                 EXCEPTION
                     WHEN NO_DATA_FOUND THEN
                         RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc w wybranym rzêdzie.');
@@ -145,9 +136,8 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                 -- Dodanie biletu do nested table
                 bilety_kolekcja.EXTEND;
                 bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
-                    current_bilet_id,
-                    25 * rabat,
-                    ref_repertuar, 
+                    current_bilet_id,          -- Reklamacje przypisany bilet_id, zaczynamy od 1
+                    50 * rabat,
                     preferencja_rzedu,
                     miejsce_rec.numer
                 );
@@ -168,7 +158,6 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         FROM Uzytkownik_table u
         WHERE u.email = email_uzytkownika;
 
-        -- Utwórz rezerwacje
         INSERT INTO Rezerwacja_table VALUES (
             rezerwacja_seq.NEXTVAL,
             SYSDATE,
@@ -208,7 +197,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
 
         IF SYSDATE > data_rozpoczecia_seansu - (1/24) THEN
-            RAISE_APPLICATION_ERROR(-20006, 'Nie mozna anulowaæ rezerwacji mniej niz godzine przed rozpoczeciem!');
+            RAISE_APPLICATION_ERROR(-20006, 'Nie mozna anulowac rezerwacji mniej niz godzine przed rozpoczeciem!');
         END IF;
 
         -- Pobranie ID rezerwacji
