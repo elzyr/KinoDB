@@ -21,10 +21,8 @@ CREATE OR REPLACE PACKAGE Admin_Pkg AS
     PROCEDURE popularnosc_filmu(
         tytul_filmu IN VARCHAR2
     );
-
 END Admin_Pkg;
 /
-
 CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
 
     PROCEDURE dodaj_film(
@@ -52,17 +50,14 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             wiek_minimalny,
             referencja_kategorii
         );
-        EXCEPTION
-            WHEN DUP_VAL_ON_INDEX THEN
-                RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule juz istnieje.');
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20003, 'Podana kategoria nie istnieje.');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20001, 'Wystapil blad podczas dodawania filmu');
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule ju¿ istnieje.');
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20003, 'Podana kategoria nie istnieje.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Wyst¹pi³ b³¹d podczas dodawania filmu.');
     END dodaj_film;
-
-
-
 
     PROCEDURE dodaj_seans(
         id_filmu IN NUMBER,
@@ -80,23 +75,25 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         INTO referencja_filmu
         FROM Film_table f
         WHERE f.film_id = id_filmu;
-    
+
         -- Pobranie referencji do sali
         SELECT REF(s)
         INTO referencja_sali
         FROM Sala_table s
         WHERE s.sala_id = id_sali;
-    
-        -- Sprawdzenie, czy seans rozpoczyna sie w godzinach otwarcia kina
+
+        -- Sprawdzenie, czy seans rozpoczyna siê w godzinach otwarcia kina
         IF TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') < '07:00' OR TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') > '22:00' THEN
             RAISE_APPLICATION_ERROR(-20004, 'Kino rozpoczyna nowe seanse w godzinach 7:00 - 22:00.');
         END IF;
-    
-        SELECT data_rozpoczecia_filmu + (czas_trwania + 30) / 1440
+
+        -- Obliczenie daty zakoñczenia filmu (dodanie czasu trwania + 30 minut przerwy)
+        SELECT data_rozpoczecia_filmu + (f.czas_trwania + 30) / 1440
         INTO data_zakonczenia_filmu
-        FROM Film_table
-        WHERE film_id = id_filmu;
-    
+        FROM Film_table f
+        WHERE f.film_id = id_filmu;
+
+        -- Sprawdzenie kolizji z istniej¹cymi seansami w tej sali
         SELECT COUNT(*)
         INTO czy_juz_jest_seans
         FROM Repertuar_table r
@@ -108,11 +105,11 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
                 OR
                 (r.data_rozpoczecia BETWEEN data_rozpoczecia_filmu AND data_zakonczenia_filmu)
               );
-    
+
         IF czy_juz_jest_seans > 0 THEN
-            RAISE_APPLICATION_ERROR(-20005, 'Seans koliduje z istniejacymi seansami w tej sali.');
+            RAISE_APPLICATION_ERROR(-20005, 'Seans koliduje z istniej¹cymi seansami w tej sali.');
         END IF;
-    
+
         -- Tworzenie nowego seansu
         nowy_seans := Repertuar(
             repertuar_id => NULL,
@@ -121,13 +118,12 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             data_rozpoczecia => data_rozpoczecia_filmu
         );
         INSERT INTO Repertuar_table VALUES nowy_seans;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20006, 'Nie znaleziono filmu lub sali.');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20007, SQLERRM);
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Nie znaleziono filmu lub sali.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20007, SQLERRM);
     END dodaj_seans;
-
 
     PROCEDURE dodaj_sale(
         nazwa_sali IN VARCHAR2,
@@ -136,13 +132,13 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     ) IS
         miejsca_rezerwacja Miejsca_Typ := Miejsca_Typ();
         id_miejsca NUMBER := 1;
-        dostepne_rzedy NUMBER;
-        dostepne_miejsca NUMBER;
+        current_rzad NUMBER;
+        current_miejsce NUMBER;
     BEGIN
-        FOR dostepne_rzedy IN 1..ilosc_rzedow_w_sali LOOP
-            FOR dostepne_miejsca IN 1..miejsca_w_rzedzie_sala LOOP
+        FOR current_rzad IN 1..ilosc_rzedow_w_sali LOOP
+            FOR current_miejsce IN 1..miejsca_w_rzedzie_sala LOOP
                 miejsca_rezerwacja.EXTEND;
-                miejsca_rezerwacja(miejsca_rezerwacja.COUNT) := Miejsce(id_miejsca, dostepne_rzedy, dostepne_miejsca, 0);
+                miejsca_rezerwacja(miejsca_rezerwacja.COUNT) := Miejsce(id_miejsca, current_rzad, current_miejsce, 0);
                 id_miejsca := id_miejsca + 1;
             END LOOP;
         END LOOP;
@@ -154,11 +150,11 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             nazwa_sali,
             miejsca_rezerwacja
         );
-        EXCEPTION
-            WHEN DUP_VAL_ON_INDEX THEN
-                RAISE_APPLICATION_ERROR(-20008, 'Sala o podanej nazwie juz istnieje.');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20009, 'Wystapil blad podczas dodawania sali');
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            RAISE_APPLICATION_ERROR(-20008, 'Sala o podanej nazwie ju¿ istnieje.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20009, 'Wyst¹pi³ b³¹d podczas dodawania sali.');
     END dodaj_sale;
 
     PROCEDURE dodaj_kategorie(
@@ -166,11 +162,11 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     ) IS
     BEGIN
         INSERT INTO Kategoria_table (nazwa) VALUES (nazwa_kategorii);
-        EXCEPTION
-            WHEN DUP_VAL_ON_INDEX THEN
-                RAISE_APPLICATION_ERROR(-20010, 'Kategoria o podanej nazwie juz istnieje.');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20011, 'Wystapil blad podczas dodawania kategorii: ' || SQLERRM);
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            RAISE_APPLICATION_ERROR(-20010, 'Kategoria o podanej nazwie ju¿ istnieje.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20011, 'Wyst¹pi³ b³¹d podczas dodawania kategorii: ' || SQLERRM);
     END dodaj_kategorie;
 
     PROCEDURE popularnosc_filmu(
@@ -182,17 +178,20 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         sprzedane_bilety NUMBER := 0;
         procent_sprzedazy NUMBER;
     BEGIN
+        -- Pobranie ID filmu
         SELECT film_id
         INTO id_filmu
         FROM Film_table
         WHERE tytul = tytul_filmu;
 
+        -- Pobranie referencji do filmu
         SELECT REF(f)
         INTO referencja_filmu
         FROM Film_table f
         WHERE f.film_id = id_filmu;
 
-        SELECT NVL(COUNT(*), 0)
+        -- Liczenie wszystkich miejsc na seansach danego filmu w ci¹gu ostatnich 7 dni
+        SELECT COUNT(*)
         INTO wszystkie_miejsca
         FROM Repertuar_table r
         JOIN Sala_table s ON r.sala_ref = REF(s)
@@ -200,29 +199,31 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         WHERE r.film_ref = referencja_filmu
           AND r.data_rozpoczecia >= SYSDATE - 7;
 
-        SELECT NVL(COUNT(*), 0)
+        -- Liczenie sprzedanych biletów na seansach danego filmu w ci¹gu ostatnich 7 dni
+        SELECT COUNT(*)
         INTO sprzedane_bilety
-        FROM Bilet_table b
-        WHERE b.seans_ref IN (
-            SELECT REF(r_inner)
-            FROM Repertuar_table r_inner
-            WHERE r_inner.film_ref = referencja_filmu
-              AND r_inner.data_rozpoczecia >= SYSDATE - 7
-        );
+        FROM Rezerwacja_table r
+        JOIN Repertuar_table rep ON r.repertuar_ref = REF(rep)
+        CROSS JOIN TABLE(r.bilety) b
+        WHERE rep.film_ref = referencja_filmu
+          AND rep.data_rozpoczecia >= SYSDATE - 7
+          AND r.czy_anulowane = 0;
 
+        -- Obliczenie procentu sprzedanych biletów
         IF wszystkie_miejsca > 0 THEN
             procent_sprzedazy := (sprzedane_bilety / wszystkie_miejsca) * 100;
         ELSE
             procent_sprzedazy := 0;
         END IF;
 
-        DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '" w ciagu ostatnich 7 dni byl zapelniony w: ' || ROUND(procent_sprzedazy, 2) || '%');
+        -- Wyœwietlenie wyniku
+        DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '" w ci¹gu ostatnich 7 dni by³ zapelniony w: ' || ROUND(procent_sprzedazy, 2) || '%');
 
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20012, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20013, 'Wystapil blad podczas obliczania popularnosci: ' || SQLERRM);
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20012, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20013, 'Wyst¹pi³ b³¹d podczas obliczania popularnoœci: ' || SQLERRM);
     END popularnosc_filmu;
 
 END Admin_Pkg;

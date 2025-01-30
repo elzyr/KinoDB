@@ -7,7 +7,7 @@ CREATE OR REPLACE PACKAGE Klient_Pkg AS
         preferencja_rzedu NUMBER,
         ilosc_miejsc_do_zarezerwowania NUMBER
     );
-  
+
     PROCEDURE Anuluj_Rezerwacje(
         tytul_filmu VARCHAR2,
         data_seansu_in DATE,
@@ -30,13 +30,10 @@ CREATE OR REPLACE PACKAGE Klient_Pkg AS
     PROCEDURE Sprawdz_Wiek(
         email_uzytkownika VARCHAR2,
         tytul_filmu VARCHAR2
-);
+    );
 
 END Klient_Pkg;
 /
-
-
-
 CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
     PROCEDURE Sprawdz_Wiek(
@@ -98,10 +95,10 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
         -- Pobranie ID seansu i sali
         BEGIN
-            SELECT r.repertuar_id, r.sala_ref.sala_id
+            SELECT r.repertuar_id, DEREF(r.sala_ref).sala_id
             INTO id_seansu, id_sali
             FROM Repertuar_table r
-            JOIN Film_table f ON REF(f) = r.film_ref
+            JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
             WHERE f.tytul = tytul_filmu
             AND r.data_rozpoczecia = data_seansu_in;
             
@@ -138,7 +135,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                 -- Dodaj bilet do kolekcji
                 bilety_kolekcja.EXTEND;
                 bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
-                    bilet_seq.NEXTVAL,
+                    rezerwacja_seq.NEXTVAL, -- U¿yj odpowiedniej sekwencji
                     25 * rabat,
                     ref_repertuar, -- U¿yj zmiennej zamiast SELECT
                     preferencja_rzedu,
@@ -185,23 +182,33 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
     ) IS
         id_seansu NUMBER;
         id_rezerwacji NUMBER;
+        data_rozpoczecia_seansu DATE; -- Dodana zmienna
     BEGIN
+        -- Pobranie ID seansu
         SELECT r.repertuar_id INTO id_seansu
         FROM Repertuar_table r
-        JOIN Film_table f ON REF(f) = r.film_ref
+        JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
         WHERE f.tytul = tytul_filmu
         AND r.data_rozpoczecia = data_seansu_in;
 
-        IF SYSDATE > (SELECT data_rozpoczecia FROM Repertuar_table WHERE repertuar_id = id_seansu) - INTERVAL '1' HOUR THEN
+        -- Pobranie daty rozpoczêcia seansu
+        SELECT data_rozpoczecia INTO data_rozpoczecia_seansu
+        FROM Repertuar_table
+        WHERE repertuar_id = id_seansu;
+
+        -- Sprawdzenie, czy anulacja jest mo¿liwa
+        IF SYSDATE > data_rozpoczecia_seansu - INTERVAL '1' HOUR THEN
             RAISE_APPLICATION_ERROR(-20006, 'Zbyt póŸna anulacja!');
         END IF;
 
+        -- Pobranie ID rezerwacji
         SELECT rezerwacja_id INTO id_rezerwacji
         FROM Rezerwacja_table
         WHERE uzytkownik_ref = (SELECT REF(u) FROM Uzytkownik_table u WHERE u.email = email_uzytkownika)
         AND repertuar_ref = (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = id_seansu)
         AND czy_anulowane = 0;
 
+        -- Aktualizacja rezerwacji jako anulowanej
         UPDATE Rezerwacja_table
         SET czy_anulowane = 1
         WHERE rezerwacja_id = id_rezerwacji;
@@ -240,8 +247,8 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             SELECT f.tytul, r.data_rozpoczecia, 
                    (SELECT COUNT(*) FROM TABLE(s.miejsca) WHERE czy_zajete = 0) AS wolne_miejsca
             FROM Repertuar_table r
-            JOIN Film_table f ON REF(f) = r.film_ref
-            JOIN Sala_table s ON REF(s) = r.sala_ref
+            JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
+            JOIN Sala_table s ON s.sala_id = DEREF(r.sala_ref).sala_id
             WHERE TRUNC(r.data_rozpoczecia) = TRUNC(data_seansu_in)
         ) LOOP
             DBMS_OUTPUT.PUT_LINE(seans.tytul || ' | ' || 
