@@ -349,7 +349,7 @@ CREATE SEQUENCE bilet_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE rezerwacja_seq START WITH 1 INCREMENT BY 1;
 
 -- -------------------------------
--- Sekcja: Tworzenie typów obiektów
+-- Sekcja: Tworzenie typï¿½w obiektï¿½w
 -- -------------------------------
 
 CREATE OR REPLACE TYPE Kategoria AS OBJECT (
@@ -377,12 +377,12 @@ CREATE OR REPLACE TYPE Sala AS OBJECT (
 /
 
 CREATE OR REPLACE TYPE Uzytkownik AS OBJECT (
-    user_id    NUMBER,
-    imie       VARCHAR2(50),
-    nazwisko   VARCHAR2(50),
-    wiek       NUMBER,
-    email      VARCHAR2(100),
-    rola       VARCHAR2(50)
+    user_id NUMBER,
+    imie VARCHAR2(50),
+    nazwisko VARCHAR2(50),
+    wiek NUMBER,
+    email VARCHAR2(100),
+    rola VARCHAR2(50)
 );
 /
 
@@ -400,7 +400,6 @@ CREATE OR REPLACE TYPE Repertuar AS OBJECT (
     film_ref REF Film,
     sala_ref REF Sala,
     data_rozpoczecia DATE,
-    MEMBER FUNCTION ilosc_miejsc_zajetych RETURN NUMBER,
     MEMBER FUNCTION data_zakonczenia RETURN DATE
 );
 /
@@ -556,38 +555,16 @@ END;
 -- Sekcja: Tworzenie cial typow w obiekach
 -- -------------------------------
 CREATE OR REPLACE TYPE BODY Repertuar AS
-    MEMBER FUNCTION ilosc_miejsc_zajetych RETURN NUMBER IS
-        v_ilosc NUMBER;
-        v_sala_id NUMBER;
-    BEGIN
-        SELECT s.sala_id
-          INTO v_sala_id
-          FROM Sala_table s
-         WHERE REF(s) = SELF.sala_ref;
-
-        -- Liczenie znalezionych miejsc z tabeli
-        SELECT COUNT(*)
-          INTO v_ilosc
-          FROM TABLE(
-              SELECT s.miejsca 
-              FROM Sala_table s
-              WHERE s.sala_id = v_sala_id
-          )
-         WHERE czy_zajete = 1;
-
-        RETURN v_ilosc;
-    END ilosc_miejsc_zajetych;
-
     MEMBER FUNCTION data_zakonczenia RETURN DATE IS
-        v_czas_trwania NUMBER;
+        czas_trwania_filmu NUMBER;
     BEGIN
     
         SELECT f.czas_trwania 
-          INTO v_czas_trwania
+          INTO czas_trwania_filmu
           FROM Film_table f
          WHERE REF(f) = SELF.film_ref;
 
-        RETURN SELF.data_rozpoczecia + (v_czas_trwania / (24 * 60));
+        RETURN SELF.data_rozpoczecia + data_rozpoczecia_filmu + (czas_trwania_filmu + 30) / 1440;
     END data_zakonczenia;
 END;
 /
@@ -610,36 +587,16 @@ END;
 -- -------------------------------
 -- Sekcja: Tworzenie wyzwalaczy
 -- -------------------------------
-
-CREATE OR REPLACE TRIGGER trg_rezerwacja_data
-BEFORE INSERT OR UPDATE ON Rezerwacja_table
-FOR EACH ROW
-DECLARE
-    v_data_rozpoczecia DATE;
-BEGIN
-    BEGIN
-        SELECT r.data_rozpoczecia 
-        INTO v_data_rozpoczecia
-        FROM Repertuar_table r
-        WHERE REF(r) = :NEW.repertuar_ref;
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20002, 'Nie znaleziono repertuaru dla wskazanej rezerwacji.');
-    END;
-END;
-/
-
-
 CREATE OR REPLACE TRIGGER release_seat_on_cancel
 AFTER UPDATE OF czy_anulowane ON Rezerwacja_table
 FOR EACH ROW
 WHEN (NEW.czy_anulowane = 1)
 DECLARE
-    v_sala_id NUMBER;
+    id_sali NUMBER;
 BEGIN
     BEGIN
         SELECT r.sala_ref.sala_id
-        INTO v_sala_id
+        INTO id_sali
         FROM Repertuar_table r
         WHERE REF(r) = :NEW.repertuar_ref;
     EXCEPTION
@@ -658,36 +615,13 @@ BEGIN
         )
     ) LOOP
         UPDATE TABLE (
-            SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = v_sala_id
+            SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = id_sali
         ) m
         SET m.czy_zajete = 0
         WHERE m.rzad = bilet_rec.rzad AND m.numer = bilet_rec.miejsce
         AND EXISTS (
-            SELECT 1 FROM Sala_table s WHERE s.sala_id = v_sala_id
+            SELECT 1 FROM Sala_table s WHERE s.sala_id = id_sali
         );
     END LOOP;
-END;
-/
-
-
-
-
-        
-CREATE OR REPLACE TRIGGER ensure_unique_seans_per_sala
-BEFORE INSERT OR UPDATE ON Repertuar_table
-FOR EACH ROW
-DECLARE
-    v_count NUMBER;
-BEGIN
-    SELECT COUNT(*)
-      INTO v_count
-      FROM Repertuar_table r
-     WHERE r.sala_ref = :NEW.sala_ref
-       AND r.data_rozpoczecia = :NEW.data_rozpoczecia
-       AND r.repertuar_id != :NEW.repertuar_id;
-
-    IF v_count > 0 THEN
-        RAISE_APPLICATION_ERROR(-20005, 'W jednej sali w tym samym czasie moze byc tylko jeden seans.');
-    END IF;
 END;
 /

@@ -24,6 +24,7 @@ CREATE OR REPLACE PACKAGE Admin_Pkg AS
 
 END Admin_Pkg;
 /
+
 CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
 
     PROCEDURE dodaj_film(
@@ -67,9 +68,8 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     ) IS
         referencja_filmu REF Film;
         referencja_sali REF Sala;
-        czas_trwania_filmu NUMBER;
-        data_zakonczenia_filmu DATE;
         czy_juz_jest_seans NUMBER;
+        nowy_seans Repertuar;
     BEGIN
         -- Pobranie referencji do filmu
         SELECT REF(f)
@@ -83,43 +83,36 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         FROM Sala_table s
         WHERE s.sala_id = id_sali;
 
-        -- Pobranie czasu trwania filmu
-        SELECT f.czas_trwania
-        INTO czas_trwania_filmu
-        FROM Film_table f
-        WHERE f.film_id = id_filmu;
-
-        data_zakonczenia_filmu := data_rozpoczecia_filmu + (czas_trwania_filmu + 30) / 1440;
-
         IF TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') < '07:00' OR TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') > '22:00' THEN
             RAISE_APPLICATION_ERROR(-20004, 'Kino rozpoczyna nowe seanse w godzinach 7:00 - 22:00.');
         END IF;
 
+        -- Sprawdzenie kolizji z istniej¹cymi seansami
         SELECT COUNT(*)
         INTO czy_juz_jest_seans
         FROM Repertuar_table r
         WHERE r.sala_ref = referencja_sali
           AND (
-                (data_rozpoczecia_filmu BETWEEN r.data_rozpoczecia AND (r.data_rozpoczecia + ((SELECT f.czas_trwania FROM Film_table f WHERE REF(f) = r.film_ref) + 30) / 1440))
+                (data_rozpoczecia_filmu BETWEEN r.data_rozpoczecia AND r.data_zakonczenia())
                 OR
-                (data_zakonczenia_filmu BETWEEN r.data_rozpoczecia AND (r.data_rozpoczecia + ((SELECT f.czas_trwania FROM Film_table f WHERE REF(f) = r.film_ref) + 30) / 1440))
-                OR
-                (r.data_rozpoczecia BETWEEN data_rozpoczecia_filmu AND data_zakonczenia_filmu)
+                (r.data_rozpoczecia BETWEEN data_rozpoczecia_filmu AND r.data_zakonczenia())
               );
 
         IF czy_juz_jest_seans > 0 THEN
             RAISE_APPLICATION_ERROR(-20005, 'Seans koliduje z istniejacymi seansami w tej sali.');
         END IF;
 
-        INSERT INTO Repertuar_table (
-            film_ref,
-            sala_ref,
-            data_rozpoczecia
-        ) VALUES (
-            referencja_filmu,
-            referencja_sali,
-            data_rozpoczecia_filmu
+        -- Tworzenie nowego seansu
+        nowy_seans := Repertuar(
+            repertuar_id => NULL, -- ID zostanie wygenerowane automatycznie
+            film_ref => referencja_filmu,
+            sala_ref => referencja_sali,
+            data_rozpoczecia => data_rozpoczecia_filmu
         );
+
+        -- Wstawienie nowego seansu do tabeli
+        INSERT INTO Repertuar_table VALUES nowy_seans;
+
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
             RAISE_APPLICATION_ERROR(-20006, 'Nie znaleziono filmu lub sali.');
