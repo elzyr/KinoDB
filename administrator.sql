@@ -1,27 +1,27 @@
 -- Specyfikacja Pakietu admin_seanse z dodan¹ procedur¹ popularnosc_filmu
-CREATE OR REPLACE PACKAGE admin_seanse AS
+CREATE OR REPLACE PACKAGE Admin_Pkg AS
 
     -- Istniej¹ce procedury
-    PROCEDURE add_film(
+    PROCEDURE dodaj_film(
         p_tytul          IN VARCHAR2,
         p_czas_trwania   IN NUMBER, -- w minutach
         p_minimalny_wiek IN NUMBER,
         p_kategoria_id   IN NUMBER
     );
 
-    PROCEDURE add_seans(
+    PROCEDURE dodaj_seans(
         p_film_id           IN NUMBER,
         p_sala_id           IN NUMBER,
         p_data_rozpoczecia  IN DATE
     );
 
-    PROCEDURE add_sala(
+    PROCEDURE dodaj_sale(
         p_nazwa              IN VARCHAR2,
         p_ilosc_rzedow       IN NUMBER,
         p_miejsca_w_rzedzie  IN NUMBER
     );
 
-    PROCEDURE add_kategoria(
+    PROCEDURE dodaj_kategorie(
         p_nazwa IN VARCHAR2
     );
 
@@ -30,15 +30,15 @@ CREATE OR REPLACE PACKAGE admin_seanse AS
         p_tytul IN VARCHAR2
     );
 
-END admin_seanse;
+END Admin_Pkg;
 /
 
 
 -- Implementacja Pakietu admin_seanse
-CREATE OR REPLACE PACKAGE BODY admin_seanse AS
+CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
 
     -- Procedura dodaj¹ca nowy film
-    PROCEDURE add_film(
+    PROCEDURE dodaj_film(
         p_tytul          IN VARCHAR2,
         p_czas_trwania   IN NUMBER,
         p_minimalny_wiek IN NUMBER,
@@ -67,10 +67,10 @@ CREATE OR REPLACE PACKAGE BODY admin_seanse AS
     EXCEPTION
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20001, 'B³¹d podczas dodawania filmu. Upewnij siê, ¿e kategoria istnieje.');
-    END add_film;
+    END dodaj_film;
 
     -- Procedura dodaj¹ca nowy seans
-    PROCEDURE add_seans(
+    PROCEDURE dodaj_seans(
         p_film_id          IN NUMBER,
         p_sala_id          IN NUMBER,
         p_data_rozpoczecia IN DATE
@@ -147,10 +147,10 @@ EXCEPTION
     WHEN OTHERS THEN
         RAISE_APPLICATION_ERROR(-20005, 'Nieznany b³¹d: ' || SQLERRM);
 
-    END add_seans;
+    END dodaj_seans;
 
     -- Procedura dodaj¹ca now¹ salê
-    PROCEDURE add_sala(
+    PROCEDURE dodaj_sale(
         p_nazwa              IN VARCHAR2,
         p_ilosc_rzedow       IN NUMBER,
         p_miejsca_w_rzedzie  IN NUMBER
@@ -180,10 +180,10 @@ EXCEPTION
     EXCEPTION
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20005, 'B³¹d podczas dodawania sali. SprawdŸ dane wejœciowe.');
-    END add_sala;
+    END dodaj_sale;
 
     -- Procedura dodaj¹ca now¹ kategoriê
-    PROCEDURE add_kategoria(
+    PROCEDURE dodaj_kategorie(
         p_nazwa IN VARCHAR2
     ) IS
     BEGIN
@@ -196,7 +196,7 @@ EXCEPTION
     EXCEPTION
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20006, 'B³¹d podczas dodawania kategorii. SprawdŸ dane wejœciowe.');
-    END add_kategoria;
+    END dodaj_kategorie;
 
     -- Procedura do obliczania popularnoœci filmu
     PROCEDURE popularnosc_filmu(
@@ -260,5 +260,5 @@ EXCEPTION
             DBMS_OUTPUT.PUT_LINE('Wyst¹pi³ b³¹d: ' || SQLERRM);
     END popularnosc_filmu;
 
-END admin_seanse;
+END Admin_Pkg;
 /
