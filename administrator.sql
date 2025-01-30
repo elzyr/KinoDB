@@ -1,4 +1,3 @@
--- Pakiet z procedurami dla administratora systemu
 CREATE OR REPLACE PACKAGE Admin_Pkg AS
     PROCEDURE dodaj_kategorie(
         nazwa_kategorii IN VARCHAR2
@@ -25,13 +24,13 @@ CREATE OR REPLACE PACKAGE Admin_Pkg AS
 
 END Admin_Pkg;
 /
-
 CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
+
     PROCEDURE dodaj_film(
-        tytul_filmu          IN VARCHAR2,
-        czas_trwania_filmu   IN NUMBER,
+        tytul_filmu IN VARCHAR2,
+        czas_trwania_filmu IN NUMBER,
         wiek_minimalny IN NUMBER,
-        id_kategorii   IN NUMBER
+        id_kategorii IN NUMBER
     ) IS
         referencja_kategorii REF Kategoria;
     BEGIN
@@ -53,8 +52,12 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             referencja_kategorii
         );
         EXCEPTION
+            WHEN DUP_VAL_ON_INDEX THEN
+                RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule juz istnieje.');
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20003, 'Podana kategoria nie istnieje.');
             WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20001, 'Wystapil blad podczas dodawania filmu, upewnij sie ze kategoria istnieje.');
+                RAISE_APPLICATION_ERROR(-20001, 'Wystapil blad podczas dodawania filmu');
     END dodaj_film;
 
     PROCEDURE dodaj_seans(
@@ -89,7 +92,7 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         data_zakonczenia_filmu := data_rozpoczecia_filmu + (czas_trwania_filmu + 30) / 1440;
 
         IF TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') < '07:00' OR TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') > '22:00' THEN
-            RAISE_APPLICATION_ERROR(-20002, 'Kino rozpoczyna nowe seanse w godzinach 7:00 - 22:00.');
+            RAISE_APPLICATION_ERROR(-20004, 'Kino rozpoczyna nowe seanse w godzinach 7:00 - 22:00.');
         END IF;
 
         SELECT COUNT(*)
@@ -105,7 +108,7 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
               );
 
         IF czy_juz_jest_seans > 0 THEN
-            RAISE_APPLICATION_ERROR(-20002, 'Seans koliduje z istniejacymi seansami w tej sali.');
+            RAISE_APPLICATION_ERROR(-20005, 'Seans koliduje z istniejacymi seansami w tej sali.');
         END IF;
 
         INSERT INTO Repertuar_table (
@@ -117,13 +120,11 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             referencja_sali,
             data_rozpoczecia_filmu
         );
-        EXCEPTION
-            WHEN DUP_VAL_ON_INDEX THEN
-                RAISE_APPLICATION_ERROR(-20003, 'Seans koliduje z istniejacymi seansami w tej sali.');
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono filmu lub sali.');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20005, 'Wystapil blad podczas proby dodania seansu.');
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Nie znaleziono filmu lub sali.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20007, SQLERRM);
     END dodaj_seans;
 
     PROCEDURE dodaj_sale(
@@ -151,9 +152,11 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             nazwa_sali,
             miejsca_rezerwacja
         );
-        EXCEPTION
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20005, 'Wystapil blad podczas dodawania nowej sali.');
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            RAISE_APPLICATION_ERROR(-20008, 'Sala o podanej nazwie juz istnieje.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20009, 'Wystapil blad podczas dodawania sali');
     END dodaj_sale;
 
     PROCEDURE dodaj_kategorie(
@@ -162,8 +165,10 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     BEGIN
         INSERT INTO Kategoria_table (nazwa) VALUES (nazwa_kategorii);
     EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            RAISE_APPLICATION_ERROR(-20010, 'Kategoria o podanej nazwie juz istnieje.');
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20006, 'Wystapil blad podczas dodawania nowej kategorii.');
+            RAISE_APPLICATION_ERROR(-20011, 'Wystapil blad podczas dodawania kategorii: ' || SQLERRM);
     END dodaj_kategorie;
 
     PROCEDURE popularnosc_filmu(
@@ -211,11 +216,11 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
 
         DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '" w ciagu ostatnich 7 dni byl zapelniony w: ' || ROUND(procent_sprzedazy, 2) || '%');
 
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                DBMS_OUTPUT.PUT_LINE('Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
-            WHEN OTHERS THEN
-                DBMS_OUTPUT.PUT_LINE('Wystapil blad podczas obliczania popularnosci: ');
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20012, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20013, 'Wystapil blad podczas obliczania popularnosci: ' || SQLERRM);
     END popularnosc_filmu;
 
 END Admin_Pkg;

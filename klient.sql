@@ -63,7 +63,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         
         -- Sprawdzenie wieku
         IF wiek_uzytkownika < wymagany_wiek_filmu THEN
-            RAISE_APPLICATION_ERROR(-20008, 'Użytkownik nie spełnia wymaganego wieku dla tego filmu.');
+            RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie spelnia wymaganego wieku dla tego filmu.');
         END IF;
     END Sprawdz_Wiek;
 
@@ -88,8 +88,8 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             Sprawdz_Wiek(email_uzytkownika, tytul_filmu);
         EXCEPTION
             WHEN OTHERS THEN
-                DBMS_OUTPUT.PUT_LINE('Użytkownik nie spełnia minimalnego wieku by pójść na film.');
-                RETURN;
+                DBMS_OUTPUT.PUT_LINE('Uzytkownik nie spelnia wymaganego wieku dla tego filmu.');
+                raise;
         END;
 
         -- Sprawdzenie czy uzytkownik kwalifikuje sie na rabat
@@ -139,7 +139,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             WHERE m.rzad = preferencja_rzedu AND m.czy_zajete = 0;
             
             IF miejsce_do_zarezerwowania IS NULL THEN
-                RAISE_APPLICATION_ERROR(-20007, 'Brak dostępnych miejsc w wybranym rzędzie.');
+                RAISE_APPLICATION_ERROR(-20007, 'Brak dostepnych miejsc w wybranym rzedzie.');
             END IF;
             
             -- Dodawanie biletu
@@ -167,7 +167,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         WHEN NO_DATA_FOUND THEN
             RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono filmu lub sali.');
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20005, 'Nieznany błąd: ' || SQLERRM);
+            RAISE_APPLICATION_ERROR(-20005, 'Wystapil blad: ' || SQLERRM);
     END Zarezerwuj_Seans;
 
     PROCEDURE Anuluj_Rezerwacje(
@@ -189,7 +189,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         AND r.data_rozpoczecia = data_seansu_in;
     
         IF data_seansu_in - INTERVAL '1' HOUR < SYSDATE THEN
-            DBMS_OUTPUT.PUT_LINE('Nie można anulować rezerwacji na mniej niż godzinę przed seansem.');
+            DBMS_OUTPUT.PUT_LINE('Nie mozna anulowac rezerwacji na mniej niz godzina przed seansem.');
             RETURN;
         END IF;
     
@@ -207,11 +207,10 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         AND r.czy_anulowane = 0;
     
         -- Anulowanie rezerwacji dla użytkownika
-        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obsłuży wyzwalacz.');
+        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obsluzy wyzwalacz.');
         UPDATE Rezerwacja_table
         SET czy_anulowane = 1
         WHERE rezerwacja_id = id_rezerwacji;
-        COMMIT;
     EXCEPTION
         WHEN OTHERS THEN
             ROLLBACK;
@@ -235,7 +234,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         WHERE r.uzytkownik_ref = referencja_uzytkownika;
     
         IF ilosc_rezerwacji = 0 THEN
-            DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla użytkownika ' || email_uzytkownika);
+            DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla uzytkownika ' || email_uzytkownika);
             RETURN;
         END IF;
         
@@ -271,7 +270,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             DBMS_OUTPUT.PUT_LINE('Film: ' || r.tytul || 
                                  ' | Data: ' || TO_CHAR(r.data_rozpoczecia, 'YYYY-MM-DD') || 
                                  ' | Godzina: ' || r.godzina_seansu || 
-                                 ' | Dostępne miejsca: ' || r.dostepne_miejsca);
+                                 ' | Dostepne miejsca: ' || r.dostepne_miejsca);
         END LOOP;
     END Pokaz_Seanse;
 
@@ -283,19 +282,19 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
     BEGIN
         SELECT COUNT(*) INTO czy_uzytkownik_istnieje FROM Uzytkownik_table WHERE email = email_uzytkownika;
         IF czy_uzytkownik_istnieje = 0 THEN
-            DBMS_OUTPUT.PUT_LINE('Użytkownik o podanym emailu nie istnieje.');
+            DBMS_OUTPUT.PUT_LINE('Uzytkownik o podanym emailu nie istnieje.');
             RETURN;
         END IF;
         
         IF nowy_typ_konta NOT IN ('standard', 'premium') THEN
-            DBMS_OUTPUT.PUT_LINE('Niepoprawny typ konta. Dozwolone wartości: standard, premium.');
+            DBMS_OUTPUT.PUT_LINE('Niepoprawny typ konta. Dozwolone wartosci: standard, premium.');
             RETURN;
         END IF;
         
         UPDATE Uzytkownik_table
         SET rola = nowy_typ_konta
         WHERE email = email_uzytkownika;
-        DBMS_OUTPUT.PUT_LINE('Typ konta użytkownika ' || email_uzytkownika || ' został zmieniony na ' || nowy_typ_konta);
+        DBMS_OUTPUT.PUT_LINE('Typ konta uzytkownika ' || email_uzytkownika || ' zostal zmieniony na ' || nowy_typ_konta);
     END Zmien_Typ_Konta;
 
 END Klient_Pkg;
