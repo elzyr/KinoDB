@@ -59,120 +59,132 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         END IF;
     END Sprawdz_Wiek;
 
-    PROCEDURE Zarezerwuj_Seans(
-        email_uzytkownika VARCHAR2,
-        tytul_filmu VARCHAR2,
-        data_seansu_in DATE,
-        preferencja_rzedu NUMBER,
-        ilosc_miejsc_do_zarezerwowania NUMBER
-    ) IS
-        cena_laczna NUMBER := 0;
-        id_rezerwacji NUMBER;
-        id_sali NUMBER;
-        id_seansu NUMBER;
-        ref_uzytkownika REF Uzytkownik;
-        ref_repertuar REF Repertuar; -- Dodana zmienna dla REF
-        bilety_kolekcja Bilety_Typ := Bilety_Typ();
-        rabat NUMBER := 1.0;
-        typ_konta VARCHAR2(20);
+PROCEDURE Zarezerwuj_Seans(
+    email_uzytkownika VARCHAR2,
+    tytul_filmu VARCHAR2,
+    data_seansu_in DATE,
+    preferencja_rzedu NUMBER,
+    ilosc_miejsc_do_zarezerwowania NUMBER
+) IS
+    cena_laczna NUMBER := 0;
+    id_rezerwacji NUMBER;
+    id_sali NUMBER;
+    id_seansu NUMBER;
+    ref_uzytkownika REF Uzytkownik;
+    ref_repertuar REF Repertuar; -- Dodana zmienna dla REF
+    bilety_kolekcja Bilety_Typ := Bilety_Typ();
+    rabat NUMBER := 1.0;
+    typ_konta VARCHAR2(20);
+    
+    current_bilet_id NUMBER := 0; -- Zmienna do œledzenia bilet_id
+BEGIN
+    -- Sprawdzenie wieku
+    Sprawdz_Wiek(email_uzytkownika, tytul_filmu);
+
+    -- Sprawdzenie rabatu
     BEGIN
-        -- Sprawdzenie wieku
-        Sprawdz_Wiek(email_uzytkownika, tytul_filmu);
+        SELECT rola INTO typ_konta
+        FROM Uzytkownik_table
+        WHERE email = email_uzytkownika;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20009, 'U¿ytkownik nie istnieje.');
+    END;
 
-        -- Sprawdzenie rabatu
+    IF typ_konta = 'premium' THEN
+        rabat := 0.9;
+    END IF;
+
+    -- Pobranie ID seansu i sali
+    BEGIN
+        SELECT r.repertuar_id, DEREF(r.sala_ref).sala_id
+        INTO id_seansu, id_sali
+        FROM Repertuar_table r
+        JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
+        WHERE f.tytul = tytul_filmu
+        AND r.data_rozpoczecia = data_seansu_in;
+        
+        -- Pobierz REF do repertuaru
+        SELECT REF(r) INTO ref_repertuar 
+        FROM Repertuar_table r 
+        WHERE r.repertuar_id = id_seansu;
+        
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20010, 'Nie znaleziono seansu.');
+    END;
+
+    -- Inicjalizacja current_bilet_id
+    SELECT NVL(MAX(b.bilet_id), 0) INTO current_bilet_id
+    FROM Rezerwacja_table r
+    CROSS JOIN TABLE(r.bilety) b
+    WHERE r.repertuar_ref = ref_repertuar;
+
+    -- Rezerwacja miejsc
+    FOR i IN 1..ilosc_miejsc_do_zarezerwowania LOOP
+        DECLARE
+            miejsce_rec Miejsce;
         BEGIN
-            SELECT rola INTO typ_konta
-            FROM Uzytkownik_table
-            WHERE email = email_uzytkownika;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20009, 'U¿ytkownik nie istnieje.');
-        END;
-
-        IF typ_konta = 'premium' THEN
-            rabat := 0.9;
-        END IF;
-
-        -- Pobranie ID seansu i sali
-        BEGIN
-            SELECT r.repertuar_id, DEREF(r.sala_ref).sala_id
-            INTO id_seansu, id_sali
-            FROM Repertuar_table r
-            JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
-            WHERE f.tytul = tytul_filmu
-            AND r.data_rozpoczecia = data_seansu_in;
-            
-            -- Pobierz REF do repertuaru
-            SELECT REF(r) INTO ref_repertuar 
-            FROM Repertuar_table r 
-            WHERE r.repertuar_id = id_seansu;
-            
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20010, 'Nie znaleziono seansu.');
-        END;
-
-        -- Rezerwacja miejsc
-        FOR i IN 1..ilosc_miejsc_do_zarezerwowania LOOP
-            DECLARE
-                miejsce_rec Miejsce;
+            -- ZnajdŸ wolne miejsce
             BEGIN
-                -- ZnajdŸ wolne miejsce
-                BEGIN
-                    SELECT VALUE(m) INTO miejsce_rec
-                    FROM TABLE(
-                        SELECT s.miejsca FROM Sala_table s
-                        WHERE s.sala_id = id_sali
-                    ) m
-                    WHERE m.rzad = preferencja_rzedu
-                    AND m.czy_zajete = 0
-                    AND ROWNUM = 1;
-                EXCEPTION
-                    WHEN NO_DATA_FOUND THEN
-                        RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc w wybranym rzêdzie.');
-                END;
-
-                -- Dodaj bilet do kolekcji
-                bilety_kolekcja.EXTEND;
-                bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
-                    rezerwacja_seq.NEXTVAL, -- U¿yj odpowiedniej sekwencji
-                    25 * rabat,
-                    ref_repertuar, -- U¿yj zmiennej zamiast SELECT
-                    preferencja_rzedu,
-                    miejsce_rec.numer
-                );
-
-                -- Zaznacz miejsce jako zajête
-                UPDATE TABLE(
+                SELECT VALUE(m) INTO miejsce_rec
+                FROM TABLE(
                     SELECT s.miejsca FROM Sala_table s
                     WHERE s.sala_id = id_sali
                 ) m
-                SET m.czy_zajete = 1
                 WHERE m.rzad = preferencja_rzedu
-                AND m.numer = miejsce_rec.numer;
+                AND m.czy_zajete = 0
+                AND ROWNUM = 1;
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc w wybranym rzêdzie.');
             END;
-        END LOOP;
 
-        -- Pobierz REF do u¿ytkownika
-        SELECT REF(u) INTO ref_uzytkownika
-        FROM Uzytkownik_table u
-        WHERE u.email = email_uzytkownika;
+            -- Inkrementacja bilet_id
+            current_bilet_id := current_bilet_id + 1;
 
-        -- Utwórz rezerwacjê
-        INSERT INTO Rezerwacja_table VALUES (
-            rezerwacja_seq.NEXTVAL,
-            SYSDATE,
-            25 * ilosc_miejsc_do_zarezerwowania * rabat,
-            0,
-            ref_repertuar, -- U¿yj zmiennej
-            ref_uzytkownika, -- U¿yj zmiennej
-            bilety_kolekcja
-        );
+            -- Dodaj bilet do kolekcji
+            bilety_kolekcja.EXTEND;
+            bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
+                current_bilet_id, -- Rêcznie przypisany bilet_id
+                25 * rabat,
+                ref_repertuar, -- U¿yj zmiennej zamiast SELECT
+                preferencja_rzedu,
+                miejsce_rec.numer
+            );
 
-    EXCEPTION
-        WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20012, 'B³¹d rezerwacji: ' || SQLERRM);
-    END Zarezerwuj_Seans;
+            -- Zaznacz miejsce jako zajête
+            UPDATE TABLE(
+                SELECT s.miejsca FROM Sala_table s
+                WHERE s.sala_id = id_sali
+            ) m
+            SET m.czy_zajete = 1
+            WHERE m.rzad = preferencja_rzedu
+            AND m.numer = miejsce_rec.numer;
+        END;
+    END LOOP;
+
+    -- Pobierz REF do u¿ytkownika
+    SELECT REF(u) INTO ref_uzytkownika
+    FROM Uzytkownik_table u
+    WHERE u.email = email_uzytkownika;
+
+    -- Utwórz rezerwacjê
+    INSERT INTO Rezerwacja_table VALUES (
+        rezerwacja_seq.NEXTVAL,
+        SYSDATE,
+        25 * ilosc_miejsc_do_zarezerwowania * rabat,
+        0,
+        ref_repertuar, -- U¿yj zmiennej
+        ref_uzytkownika, -- U¿yj zmiennej
+        bilety_kolekcja
+    );
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20012, 'B³¹d rezerwacji: ' || SQLERRM);
+END Zarezerwuj_Seans;
+
 
 
     PROCEDURE Anuluj_Rezerwacje(
