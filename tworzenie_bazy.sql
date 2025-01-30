@@ -658,11 +658,6 @@ BEGIN
         WHEN NO_DATA_FOUND THEN
             RAISE_APPLICATION_ERROR(-20002, 'Nie znaleziono repertuaru dla wskazanej rezerwacji.');
     END;
-
-    -- Sprawd�, czy data rezerwacji jest p�niejsza ni� rozpocz�cie repertuaru
-    IF :NEW.data_rezerwacji > v_data_rozpoczecia THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Nie mo�na rezerwowa� bilet�w na seans, kt�ry ju� si� zacz��.');
-    END IF;
 END;
 /
 

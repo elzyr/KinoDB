@@ -175,14 +175,20 @@ AND EXISTS (
         v_uzytkownik_ref REF Uzytkownik;
         v_sala_id NUMBER;
         v_rezerwacja_id NUMBER;
+        v_data_seansu DATE;
     BEGIN
         -- Pobierz repertuar_id i sala_id na podstawie tytu³u filmu i daty seansu
-        SELECT r.repertuar_id, r.sala_ref.sala_id
-        INTO v_repertuar_id, v_sala_id
+        SELECT r.repertuar_id, r.sala_ref.sala_id, r.data_rozpoczecia
+        INTO v_repertuar_id, v_sala_id, v_data_seansu
         FROM Repertuar_table r
         JOIN Film_table f ON REF(f) = r.film_ref
         WHERE f.tytul = p_tytul
         AND r.data_rozpoczecia = p_data_seansu;
+    
+    IF v_data_seansu - INTERVAL '1' HOUR < SYSDATE THEN
+        DBMS_OUTPUT.PUT_LINE('Nie mozna anulowac rezerwacji na mniej niz godzine przed seansem.');
+        RETURN;
+    END IF;
     
         -- Pobierz referencjê u¿ytkownika
         SELECT REF(u)
