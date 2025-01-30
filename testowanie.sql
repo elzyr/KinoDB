@@ -17,6 +17,7 @@ BEGIN
 
     INSERT INTO Uzytkownik_table VALUES (Uzytkownik(1, 'Jan', 'Kowalski', 20, 'jan@test.pl', 'standard'));
     INSERT INTO Uzytkownik_table VALUES (Uzytkownik(2, 'Anna', 'Nowak', 16, 'anna@test.pl', 'premium'));
+    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(3, 'Zbigniew', 'Szczupak', 25, 'zbigniew@test.pl', 'premium'));
 END;
 /
 
@@ -62,7 +63,18 @@ END;
 
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 5: Przekroczenie liczby miejsc w sali');
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 4, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 5, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 6, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 7, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 8, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 9, 10);
+    Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 10, 10);
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 10);
+    
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
 EXCEPTION
     WHEN OTHERS THEN
