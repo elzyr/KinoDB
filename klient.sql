@@ -156,10 +156,6 @@ AND EXISTS (
     END AnulujRezerwacje;
 
 
-
-
-
-
     
     PROCEDURE PokazRezerwacje(
         p_email VARCHAR2
@@ -173,13 +169,15 @@ AND EXISTS (
         WHERE u.email = p_email;
         
         FOR r IN (
-            SELECT r.rezerwacja_id, f.tytul, rep.data_rozpoczecia, r.cena_laczna, r.czy_anulowane
+            SELECT r.rezerwacja_id, f.tytul, rep.data_rozpoczecia,TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu
+            , r.cena_laczna, r.czy_anulowane
             FROM Rezerwacja_table r
             JOIN Repertuar_table rep ON REF(rep) = r.repertuar_ref
             JOIN Film_table f ON REF(f) = rep.film_ref
             WHERE r.uzytkownik_ref = v_uzytkownik_ref
         ) LOOP
-            DBMS_OUTPUT.PUT_LINE('Rezerwacja ID: ' || r.rezerwacja_id || ' | Film: ' || r.tytul || ' | Data: ' || r.data_rozpoczecia || ' | Cena: ' || r.cena_laczna || ' | Anulowana: ' || r.czy_anulowane);
+            DBMS_OUTPUT.PUT_LINE('Rezerwacja ID: ' || r.rezerwacja_id || ' | Film: ' || r.tytul || ' | Data: ' || r.data_rozpoczecia  || 
+                             ' | Godzina: ' || r.godzina_seansu|| ' | Cena: ' || r.cena_laczna || ' | Anulowana: ' || r.czy_anulowane);
         END LOOP;
     END PokazRezerwacje;
     
