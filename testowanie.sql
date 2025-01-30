@@ -1,3 +1,5 @@
+SET SERVEROUTPUT ON;
+
 BEGIN
     -- Dodawanie kategorii
     admin_seanse.add_kategoria('Komedia');
@@ -22,7 +24,7 @@ BEGIN
     admin_seanse.add_film(
         p_tytul => 'Strach w Nocy',
         p_czas_trwania => 90,
-        p_minimalny_wiek => 16,
+        p_minimalny_wiek => 17,
         p_kategoria_id => 2 -- ID kategorii 'Horror'
     );
 
@@ -100,7 +102,7 @@ BEGIN
     admin_seanse.add_seans(
         p_film_id => 2, -- Zak³adaj¹c, ¿e ID filmu to 1
         p_sala_id => 2, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-30 19:00', 'YYYY-MM-DD HH24:MI')
+        p_data_rozpoczecia => TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI')
     );
     
     DBMS_OUTPUT.PUT_LINE('Poprawne seanse dodane.');
@@ -151,7 +153,7 @@ BEGIN
     );
     
     INSERT INTO Uzytkownik_table VALUES (
-        Uzytkownik(NULL, 'Anna', 'Nowak', 25, 'anna.nowak@example.com', 'premium')
+        Uzytkownik(NULL, 'Iza', 'Kowalska', 16, 'ania.kowalska@example.com', 'premium')
     );
     
     COMMIT;
@@ -180,8 +182,52 @@ select * from Uzytkownik_table
 
 
 BEGIN
-    Rezerwacja_Pkg.PokazSeanse(
+    Klient_Pkg.PokazSeanse(
         p_data_seansu => TO_DATE('2025-01-30', 'YYYY-MM-DD')
+    );
+END;
+/
+
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_email VARCHAR2(100);
+    v_typ_konta VARCHAR2(20);
+BEGIN
+    -- Test 1: Poprawna zmiana na 'premium'
+    v_email := 'piotr.zielinski@example.com';
+    v_typ_konta := 'premium';
+    DBMS_OUTPUT.PUT_LINE('Test 1: Próba zmiany konta na ' || v_typ_konta);
+    Klient_Pkg.ZmienTypKonta(v_email, v_typ_konta);
+
+END;
+/
+
+-- TEST 1: Rezerwacja seansu
+DECLARE
+    v_test_email VARCHAR2(100) := 'iza.kowalska@example.com';
+    v_test_tytul VARCHAR2(200) := 'Strach w Nocy';
+    v_test_rzad NUMBER := 1;
+    v_test_ilosc_miejsc NUMBER := 1;
+    v_test_data_seansu DATE := TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI');
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('--- TEST : Rezerwacja seansu  na film + 18 dla niepelnotelniej osoby---');
+    Klient_Pkg.ZarezerwujSeans(
+        p_email => v_test_email,
+        p_tytul => v_test_tytul,
+        p_data_seansu => v_test_data_seansu,
+        p_rzad => v_test_rzad,
+        p_ilosc_miejsc => v_test_ilosc_miejsc
+    );
+END;
+/
+
+DECLARE
+    v_test_email VARCHAR2(100) := 'ania.kowalska@example.com';
+BEGIN
+    Klient_Pkg.PokazRezerwacje(
+        p_email => v_test_email
     );
 END;
 /
@@ -189,19 +235,16 @@ END;
 
 
 
-
-SET SERVEROUTPUT ON;
-
 -- TEST 1: Rezerwacja seansu
 DECLARE
     v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
     v_test_tytul VARCHAR2(200) := 'Strach w Nocy';
     v_test_rzad NUMBER := 3;
-    v_test_ilosc_miejsc NUMBER := 5;
-    v_test_data_seansu DATE := TO_DATE('2025-01-30 19:00', 'YYYY-MM-DD HH24:MI');
+    v_test_ilosc_miejsc NUMBER := 2;
+    v_test_data_seansu DATE := TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI');
 BEGIN
     DBMS_OUTPUT.PUT_LINE('--- TEST 1: Rezerwacja seansu ---');
-    Rezerwacja_Pkg.ZarezerwujSeans(
+    Klient_Pkg.ZarezerwujSeans(
         p_email => v_test_email,
         p_tytul => v_test_tytul,
         p_data_seansu => v_test_data_seansu,
@@ -217,7 +260,7 @@ DECLARE
     v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
 BEGIN
     DBMS_OUTPUT.PUT_LINE('--- TEST 2: Wyœwietlenie rezerwacji u¿ytkownika ---');
-    Rezerwacja_Pkg.PokazRezerwacje(
+    Klient_Pkg.PokazRezerwacje(
         p_email => v_test_email
     );
 END;
@@ -225,10 +268,10 @@ END;
 
 -- TEST 3: Wyœwietlenie seansów na podan¹ datê
 DECLARE
-    v_test_data_seansu DATE := TO_DATE('2025-01-30', 'YYYY-MM-DD');
+    v_test_data_seansu DATE := TO_DATE('2025-01-31', 'YYYY-MM-DD');
 BEGIN
     DBMS_OUTPUT.PUT_LINE('--- TEST 3: Wyœwietlenie seansów na podan¹ datê ---');
-    Rezerwacja_Pkg.PokazSeanse(
+    Klient_Pkg.PokazSeanse(
         p_data_seansu => v_test_data_seansu
     );
 END;
@@ -238,10 +281,10 @@ END;
 DECLARE
     v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
     v_test_tytul VARCHAR2(200) := 'Strach w Nocy';
-    v_test_data_seansu DATE := TO_DATE('2025-01-30 19:00', 'YYYY-MM-DD HH24:MI');
+    v_test_data_seansu DATE := TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI');
 BEGIN
     DBMS_OUTPUT.PUT_LINE('--- TEST 4: Anulowanie rezerwacji ---');
-    Rezerwacja_Pkg.AnulujRezerwacje(
+    Klient_Pkg.AnulujRezerwacje(
         p_tytul => v_test_tytul,
         p_data_seansu => v_test_data_seansu,
         p_email => v_test_email
@@ -254,7 +297,7 @@ DECLARE
     v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
 BEGIN
     DBMS_OUTPUT.PUT_LINE('--- TEST 5: Wyœwietlenie rezerwacji po anulowaniu ---');
-    Rezerwacja_Pkg.PokazRezerwacje(
+    Klient_Pkg.PokazRezerwacje(
         p_email => v_test_email
     );
 END;
@@ -265,7 +308,7 @@ DECLARE
     v_test_data_seansu DATE := TO_DATE('2025-01-30 19:00', 'YYYY-MM-DD HH24:MI');
 BEGIN
     DBMS_OUTPUT.PUT_LINE('--- TEST 6: Sprawdzenie dostêpnoœci miejsc po anulowaniu ---');
-    Rezerwacja_Pkg.PokazSeanse(
+    Klient_Pkg.PokazSeanse(
         p_data_seansu => v_test_data_seansu
     );
 END;
