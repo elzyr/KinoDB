@@ -89,23 +89,26 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
+
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 7: Anulowanie na godzine przed seansem');
-    
-    -- Dodaj seans za 30 minut od ustalonej daty (2026-01-01 00:30:00)
-    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-01 00:30:00', 'YYYY-MM-DD HH24:MI:SS')); 
-    
-    -- Rezerwacja
-    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-01 00:30:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 2);
-    
-    -- Proba anulowania 59 minut przed
-    Klient_Pkg.Anuluj_Rezerwacje('The Conjuring', TO_DATE('2026-01-01 00:30:00', 'YYYY-MM-DD HH24:MI:SS'), 'jan@test.pl');
-    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+    DBMS_OUTPUT.PUT_LINE('Test 7: Anulowanie na godzinê przed seansem');
+    DECLARE
+        v_seans_time DATE;
+    BEGIN
+        v_seans_time := SYSDATE + 30/1440; -- 30 minut od teraz
+        
+        Admin_Pkg.dodaj_seans(1, 1, v_seans_time);
+        Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', v_seans_time, 2, 2);
+        Klient_Pkg.Anuluj_Rezerwacje('The Conjuring', v_seans_time, 'jan@test.pl');
+        
+        DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+    END;
 END;
 /
+
     
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 8: Sprawdzenie znizki 10% dla premium');

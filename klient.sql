@@ -117,8 +117,6 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         FROM Uzytkownik_table u
         WHERE u.email = email_uzytkownika;
         
-        
-                -- Sprawdzenie dostêpnoœci miejsc w danym rzêdzie
         SELECT COUNT(*)
         INTO miejsce_do_zarezerwowania
         FROM TABLE(
@@ -126,12 +124,10 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         ) m
         WHERE m.rzad = preferencja_rzedu AND m.czy_zajete = 0;
 
-        -- Jeœli nie ma wystarczaj¹cej liczby miejsc, przerwij procedurê
         IF miejsce_do_zarezerwowania < ilosc_miejsc_do_zarezerwowania THEN
-            RAISE_APPLICATION_ERROR(-20009, 'Nie ma wystarczajacej liczby wolnych miejsc w wybranym rzêdzie.');
+            RAISE_APPLICATION_ERROR(-20009, 'Nie ma wystarczajacej liczby wolnych miejsc w wybranym rzï¿½dzie.');
         END IF;
         
-        -- Tworzenie biletow i aktualizacja statusu miejsc
         FOR i IN 1 .. ilosc_miejsc_do_zarezerwowania LOOP
             SELECT MIN(m.numer)
             INTO miejsce_do_zarezerwowania
@@ -188,43 +184,46 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
     ) IS
         id_seansu NUMBER;
         referencja_uzytkownika REF Uzytkownik;
-        id_sali NUMBER;
         id_rezerwacji NUMBER;
+        data_roz DATE;
     BEGIN
-        -- Pobierz repertuar_id i id_sali
-        SELECT r.repertuar_id, r.sala_ref.sala_id
-        INTO id_seansu, id_sali
+
+        SELECT r.repertuar_id, r.data_rozpoczecia
+        INTO id_seansu, data_roz
         FROM Repertuar_table r
         JOIN Film_table f ON REF(f) = r.film_ref
         WHERE f.tytul = tytul_filmu
         AND r.data_rozpoczecia = data_seansu_in;
-    
-        IF data_seansu_in - INTERVAL '1' HOUR < SYSDATE THEN
-            DBMS_OUTPUT.PUT_LINE('Nie mozna anulowac rezerwacji na mniej niz godzina przed seansem.');
-            RETURN;
+
+        IF data_roz - INTERVAL '1' HOUR < SYSDATE THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Nie mozna anulowac rezerwacji na mniej niz godzina przed seansem.');
         END IF;
-    
+
         SELECT REF(u)
         INTO referencja_uzytkownika
         FROM Uzytkownik_table u
         WHERE u.email = email_uzytkownika;
     
-        -- Pobierz id_rezerwacji uÅ¼ytkownika
+        -- Znajdï¿½ aktywnï¿½ rezerwacjï¿½
         SELECT r.rezerwacja_id
         INTO id_rezerwacji
         FROM Rezerwacja_table r
         WHERE r.uzytkownik_ref = referencja_uzytkownika
-        AND r.repertuar_ref = (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = id_seansu)
+        AND r.repertuar_ref = (SELECT REF(rp) FROM Repertuar_table rp WHERE rp.repertuar_id = id_seansu)
         AND r.czy_anulowane = 0;
     
-        -- Anulowanie rezerwacji dla uzytkownika
-        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obsluzy wyzwalacz.');
+        -- Anuluj rezerwacjï¿½
         UPDATE Rezerwacja_table
         SET czy_anulowane = 1
         WHERE rezerwacja_id = id_rezerwacji;
-    EXCEPTION
-        WHEN OTHERS THEN
-            ROLLBACK;
+    
+        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana.');
+    
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Brak rezerwacji dla podanych kryteriow.');
+            WHEN OTHERS THEN
+                RAISE_APPLICATION_ERROR(-20005, 'Wystapil blad: ' || SQLERRM);
     END Anuluj_Rezerwacje;
 
 PROCEDURE Pokaz_Rezerwacje(
@@ -238,18 +237,18 @@ BEGIN
     FROM Uzytkownik_table u
     WHERE u.email = email_uzytkownika;
     
-    -- Sprawdzenie czy u¿ytkownik ma rezerwacje
+    -- Sprawdzenie czy uï¿½ytkownik ma rezerwacje
     SELECT COUNT(*)
     INTO ilosc_rezerwacji
     FROM Rezerwacja_table r
     WHERE r.uzytkownik_ref = referencja_uzytkownika;
 
     IF ilosc_rezerwacji = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla u¿ytkownika ' || email_uzytkownika);
+        DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla uï¿½ytkownika ' || email_uzytkownika);
         RETURN;
     END IF;
     
-    -- Pobieramy rezerwacje u¿ytkownika
+    -- Pobieramy rezerwacje uï¿½ytkownika
     FOR r IN (
         SELECT r.rezerwacja_id, 
                f.tytul, 
@@ -257,7 +256,7 @@ BEGIN
                TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu,
                r.cena_laczna, 
                r.czy_anulowane,
-               rep.repertuar_id  -- Klucz do po³¹czenia z biletami
+               rep.repertuar_id  -- Klucz do poï¿½ï¿½czenia z biletami
         FROM Rezerwacja_table r
         JOIN Repertuar_table rep ON REF(rep) = r.repertuar_ref
         JOIN Film_table f ON REF(f) = rep.film_ref
@@ -271,7 +270,7 @@ BEGIN
                              ' | Cena: ' || r.cena_laczna || 
                              ' | Anulowana: ' || r.czy_anulowane);
         
-        -- Pobranie miejsc zajêtych w tej rezerwacji
+        -- Pobranie miejsc zajï¿½tych w tej rezerwacji
         FOR b IN (
             SELECT b.rzad, b.miejsce
             FROM Bilet_table b
@@ -279,7 +278,7 @@ BEGIN
                                  FROM Repertuar_table rep 
                                  WHERE rep.repertuar_id = r.repertuar_id)
         ) LOOP
-            DBMS_OUTPUT.PUT_LINE(' -> Zajête miejsce: Rz¹d ' || b.rzad || ', Miejsce ' || b.miejsce);
+            DBMS_OUTPUT.PUT_LINE(' -> Zajï¿½te miejsce: Rzï¿½d ' || b.rzad || ', Miejsce ' || b.miejsce);
         END LOOP;
     END LOOP;
     DBMS_OUTPUT.PUT_LINE('------------------------------------------');
