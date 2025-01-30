@@ -4,31 +4,25 @@ BEGIN
     Admin_Pkg.dodaj_kategorie('Familijny');
 
     -- Dodaj sale
-    Admin_Pkg.dodaj_sale('Sala 1', 5, 10); -- 5 rzêdów, 10 miejsc w rzêdzie
+    Admin_Pkg.dodaj_sale('Sala 1', 5, 10);
     Admin_Pkg.dodaj_sale('Sala 2', 3, 8);
 
     -- Dodaj filmy
-    Admin_Pkg.dodaj_film('The Conjuring', 120, 18, 1); -- Horror, wiek 18+
-    Admin_Pkg.dodaj_film('Kraina Lodu', 90, 0, 2);     -- Familijny, brak ograniczeñ
+    Admin_Pkg.dodaj_film('The Conjuring', 120, 18, 1);
+    Admin_Pkg.dodaj_film('Kraina Lodu', 90, 0, 2); 
 
     -- Dodaj seanse
-    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- Jutro o 10:00
-    Admin_Pkg.dodaj_seans(2, 2, TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- Jutro o 22:00
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+    Admin_Pkg.dodaj_seans(2, 2, TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-    -- Dodaj u¿ytkowników
     INSERT INTO Uzytkownik_table VALUES (Uzytkownik(1, 'Jan', 'Kowalski', 20, 'jan@test.pl', 'standard'));
     INSERT INTO Uzytkownik_table VALUES (Uzytkownik(2, 'Anna', 'Nowak', 16, 'anna@test.pl', 'premium'));
-    COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('B³¹d inicjalizacji: ' || SQLERRM);
-        ROLLBACK;
 END;
 /
-#
+
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 1: Próba dodania dwóch filmów na tê sam¹ salê w tym samym czasie');
-    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- Ju¿ istniej¹cy seans
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS')); 
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
 EXCEPTION
     WHEN OTHERS THEN
@@ -38,7 +32,6 @@ END;
 
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 2: Przerwa krótsza ni¿ 30 minut miêdzy seansami');
-    -- Film trwa 120 minut, kolejny seans o 12:10 (przerwa 10 minut)
     Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 12:10:00', 'YYYY-MM-DD HH24:MI:SS'));
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
 EXCEPTION
@@ -49,7 +42,7 @@ END;
 
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 3: Seans przed 7:00');
-    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 06:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- 6:00
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 06:00:00', 'YYYY-MM-DD HH24:MI:SS'));
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
 EXCEPTION
     WHEN OTHERS THEN
@@ -59,8 +52,6 @@ END;
 
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 4: Przekroczenie liczby miejsc w sali');
-    
-    -- Próba rezerwacji 51 miejsc w Salê 1 (10 miejsc na rzêdzie * 5 rzêdów = 50 miejsc)
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 51);
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
 EXCEPTION
@@ -72,7 +63,6 @@ END;
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 5: Rezerwacja 5 miejsc w rzêdzie 3');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'Kraina Lodu', TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 5);
-    
     -- SprawdŸ czy miejsca s¹ ci¹g³e (np. 1-5)
     FOR r IN (
         SELECT m.numer 
@@ -216,4 +206,30 @@ END;
 /
 
 
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 15: Sprawdzenie popularnosci filmu "Kraina Lodu"');
+
+    BEGIN
+        Admin_Pkg.dodaj_seans(
+            id_filmu => 2, 
+            id_sali => 2,  
+            data_rozpoczecia_filmu => TRUNC(SYSDATE - 2) + (10/24)
+        );
+        
+        DBMS_OUTPUT.PUT_LINE('Seans filmu "Kraina Lodu" dodany pomyœlnie.');
+        Klient_Pkg.Zarezerwuj_Seans(
+            email_uzytkownika          => 'jan@test.pl',
+            tytul_filmu                => 'Kraina Lodu',
+            data_seansu_in             => TRUNC(SYSDATE - 2) + (10/24), 
+            preferencja_rzedu          => 2,
+            ilosc_miejsc_do_zarezerwowania => 5
+        );
+        Admin_Pkg.popularnosc_filmu('Kraina Lodu');
+        DBMS_OUTPUT.PUT_LINE('TEST ZAKONCZONY: Popularnosc filmu "Kraina Lodu" zostala sprawdzona.');
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: ' || SQLERRM);
+    END;
+END;
+/
 
