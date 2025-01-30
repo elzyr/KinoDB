@@ -452,7 +452,8 @@ CREATE OR REPLACE TYPE Rezerwacja AS OBJECT (
 -- Tabela Kategoria_table
 CREATE TABLE Kategoria_table OF Kategoria (
     PRIMARY KEY (kategoria_id),
-    CONSTRAINT kategoria_nazwa_ck CHECK (nazwa IS NOT NULL)
+    CONSTRAINT kategoria_nazwa_ck CHECK (nazwa IS NOT NULL),
+    CONSTRAINT kategoria_nazwa_unique UNIQUE(nazwa)
 );
 /
 

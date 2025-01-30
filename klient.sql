@@ -80,6 +80,8 @@ PROCEDURE ZarezerwujSeans(
     v_repertuar_id NUMBER;
     v_uzytkownik_ref REF Uzytkownik;
     v_miejsce NUMBER;
+    v_rabat NUMBER := 1.0;
+    v_typ_konta VARCHAR2(20);
 BEGIN
             -- Sprawdzenie wieku u¿ytkownika przed rezerwacj¹
     BEGIN
@@ -89,6 +91,11 @@ BEGIN
             DBMS_OUTPUT.PUT_LINE('User nie spelnia minimalnego wieku by pojsc na film' );
             RETURN; -- Przerywamy rezerwacjê jeœli u¿ytkownik nie spe³nia wymagañ wiekowych
     END;
+    
+       SELECT rola INTO v_typ_konta FROM Uzytkownik_table WHERE email = p_email;
+            IF v_typ_konta = 'premium' THEN
+                v_rabat := 0.9; -- Rabat 10% dla u¿ytkowników premium
+        END IF;
         -- Pobierz repertuar_id na podstawie tytu³u filmu
         SELECT r.repertuar_id
         INTO v_repertuar_id
@@ -110,7 +117,7 @@ BEGIN
         WHERE u.email = p_email;
         
         -- Tworzenie rezerwacji
-        v_cena_laczna := p_ilosc_miejsc * 50; -- do zmiany cena
+        v_cena_laczna := p_ilosc_miejsc * 50 * v_rabat;
         
         INSERT INTO Rezerwacja_table (rezerwacja_id, data_rezerwacji, cena_laczna, czy_anulowane, repertuar_ref, uzytkownik_ref, bilety)
         VALUES (
@@ -143,18 +150,19 @@ BEGIN
                 p_rzad, v_miejsce
             );
             
-            -- Oznaczenie miejsca jako zajête
-UPDATE TABLE (
-    SELECT s.miejsca FROM Sala_table s
-    WHERE s.sala_id = v_sala_id
-) m
-SET m.czy_zajete = 1
-WHERE m.rzad = p_rzad AND m.numer = v_miejsce
-AND EXISTS (
-    SELECT 1 FROM Repertuar_table r
-    WHERE r.repertuar_id = v_repertuar_id
-    AND r.sala_ref.sala_id = v_sala_id
-);
+                    -- Oznaczenie miejsca jako zajête
+        UPDATE TABLE (
+            SELECT s.miejsca FROM Sala_table s
+            WHERE s.sala_id = v_sala_id
+        ) m
+        SET m.czy_zajete = 1
+        WHERE m.rzad = p_rzad AND m.numer = v_miejsce
+        AND EXISTS (
+            SELECT 1 FROM Repertuar_table r
+            WHERE r.repertuar_id = v_repertuar_id
+            AND r.sala_ref.sala_id = v_sala_id
+        );
+        
         END LOOP;
         EXCEPTION
     WHEN NO_DATA_FOUND THEN
