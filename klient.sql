@@ -1,36 +1,36 @@
 SET SERVEROUTPUT ON;
 CREATE OR REPLACE PACKAGE Klient_Pkg AS
 
-    PROCEDURE ZarezerwujSeans(
-        p_email VARCHAR2,
-        p_tytul VARCHAR2,
-        p_data_seansu DATE,
-        p_rzad NUMBER,
-        p_ilosc_miejsc NUMBER
+    PROCEDURE Zarezerwuj_Seans(
+        email_uzytkownika VARCHAR2,
+        tytul_filmu VARCHAR2,
+        data_seansu_in DATE,
+        rzad_sali NUMBER,
+        ilosc_miejsc_do_zarezerwowania NUMBER
     );
   
-    PROCEDURE AnulujRezerwacje(
-        p_tytul VARCHAR2,
-        p_data_seansu DATE,
-        p_email VARCHAR2
+    PROCEDURE Anuluj_Rezerwacje(
+        tytul_filmu VARCHAR2,
+        data_seansu_in DATE,
+        email_uzytkownika VARCHAR2
     );
     
-    PROCEDURE PokazRezerwacje(
-        p_email VARCHAR2
+    PROCEDURE Pokaz_Rezerwacje(
+        email_uzytkownika VARCHAR2
     );
     
-    PROCEDURE PokazSeanse(
-        p_data_seansu DATE
+    PROCEDURE Pokaz_Seanse(
+        data_seansu_in DATE
     );
     
-    PROCEDURE ZmienTypKonta(
-        p_email VARCHAR2,
-        p_typ_konta VARCHAR2
+    PROCEDURE Zmien_Typ_Konta(
+        email_uzytkownika VARCHAR2,
+        nowy_typ_konta VARCHAR2
     );
     
-    PROCEDURE SprawdzWiek(
-        p_email VARCHAR2,
-        p_tytul VARCHAR2
+    PROCEDURE Sprawdz_Wiek(
+        email_uzytkownika VARCHAR2,
+        tytul_filmu VARCHAR2
 );
 
 END Klient_Pkg;
@@ -41,267 +41,262 @@ END Klient_Pkg;
 
 
 CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
-PROCEDURE SprawdzWiek(
-    p_email VARCHAR2,
-    p_tytul VARCHAR2
-) IS
-    v_wiek_usera NUMBER;
-    v_wiek_filmu NUMBER;
-BEGIN
-    -- Pobranie wieku u�ytkownika
-    SELECT  u.wiek
-    INTO v_wiek_usera
-    FROM Uzytkownik_table u
-    WHERE u.email = p_email;
-    
-    -- Pobranie minimalnego wieku po tytule filmu
-    SELECT MIN(f.minimalny_wiek) 
-    INTO v_wiek_filmu
-    FROM Film_table f 
-    WHERE f.tytul = p_tytul;
-    
-    -- Sprawdzenie wieku
-    IF v_wiek_usera < v_wiek_filmu THEN
-        RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie spe�nia wymaganego wieku dla tego filmu.');
-    END IF;
-END SprawdzWiek;
 
-PROCEDURE ZarezerwujSeans(
-    p_email VARCHAR2,
-    p_tytul VARCHAR2,
-    p_data_seansu DATE,
-    p_rzad NUMBER,
-    p_ilosc_miejsc NUMBER
-) IS
-    v_cena_laczna NUMBER := 0;
-    v_rezerwacja_id NUMBER;
-    v_sala_id NUMBER;
-    v_repertuar_id NUMBER;
-    v_uzytkownik_ref REF Uzytkownik;
-    v_miejsce NUMBER;
-    v_rabat NUMBER := 1.0;
-    v_typ_konta VARCHAR2(20);
-BEGIN
-    -- Wywolanie procedury sprawdzajacej wiek
+    PROCEDURE Sprawdz_Wiek(
+        email_uzytkownika VARCHAR2,
+        tytul_filmu VARCHAR2
+    ) IS
+        wiek_uzytkownika NUMBER;
+        wymagany_wiek_filmu NUMBER;
     BEGIN
-        SprawdzWiek(p_email, p_tytul);
-            EXCEPTION
-        WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('User nie spelnia minimalnego wieku by pojsc na film' );
-            RETURN;
-    END;
-        -- Spradzamy czy uzytkownik kwalifikuje sie na rabat
-       SELECT rola INTO v_typ_konta FROM Uzytkownik_table WHERE email = p_email;
-            IF v_typ_konta = 'premium' THEN
-                v_rabat := 0.9; 
+        -- Pobranie wieku uzytkownika
+        SELECT u.wiek
+        INTO wiek_uzytkownika
+        FROM Uzytkownik_table u
+        WHERE u.email = email_uzytkownika;
+        
+        -- Pobranie minimalnego wieku po tytule filmu
+        SELECT MIN(f.minimalny_wiek) 
+        INTO wymagany_wiek_filmu
+        FROM Film_table f 
+        WHERE f.tytul = tytul_filmu;
+        
+        -- Sprawdzenie wieku
+        IF wiek_uzytkownika < wymagany_wiek_filmu THEN
+            RAISE_APPLICATION_ERROR(-20008, 'Użytkownik nie spełnia wymaganego wieku dla tego filmu.');
+        END IF;
+    END Sprawdz_Wiek;
+
+    PROCEDURE Zarezerwuj_Seans(
+        email_uzytkownika VARCHAR2,
+        tytul_filmu VARCHAR2,
+        data_seansu_in DATE,
+        rzad_sali NUMBER,
+        ilosc_miejsc_do_zarezerwowania NUMBER
+    ) IS
+        cena_laczna_rezerwacji NUMBER := 0;
+        id_rezerwacji NUMBER;
+        id_sali NUMBER;
+        id_seansu NUMBER;
+        referencja_uzytkownika REF Uzytkownik;
+        miejsce_do_zarezerwowania NUMBER;
+        rabat_uzytkownika NUMBER := 1.0;
+        typ_konta_uzytkownika VARCHAR2(20);
+    BEGIN
+        -- Wywolanie procedury sprawdzajacej wiek
+        BEGIN
+            Sprawdz_Wiek(email_uzytkownika, tytul_filmu);
+        EXCEPTION
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Użytkownik nie spełnia minimalnego wieku by pójść na film.');
+                RETURN;
+        END;
+
+        -- Sprawdzenie czy uzytkownik kwalifikuje sie na rabat
+        SELECT rola INTO typ_konta_uzytkownika FROM Uzytkownik_table WHERE email = email_uzytkownika;
+        IF typ_konta_uzytkownika = 'premium' THEN
+            rabat_uzytkownika := 0.9; 
         END IF;
         
         -- Pobieranie id_repertuaru
         SELECT r.repertuar_id
-        INTO v_repertuar_id
+        INTO id_seansu
         FROM Repertuar_table r
         JOIN Film_table f ON REF(f) = r.film_ref
-        WHERE f.tytul = p_tytul
-        AND r.data_rozpoczecia = p_data_seansu;
+        WHERE f.tytul = tytul_filmu
+        AND r.data_rozpoczecia = data_seansu_in;
         
         -- Pobierz sale danego repertuaru
         SELECT r.sala_ref.sala_id
-        INTO v_sala_id
+        INTO id_sali
         FROM Repertuar_table r
-        WHERE r.repertuar_id = v_repertuar_id;
+        WHERE r.repertuar_id = id_seansu;
         
         SELECT REF(u)
-        INTO v_uzytkownik_ref
+        INTO referencja_uzytkownika
         FROM Uzytkownik_table u
-        WHERE u.email = p_email;
+        WHERE u.email = email_uzytkownika;
         
         -- Tworzenie rezerwacji
-        v_cena_laczna := p_ilosc_miejsc * 50 * v_rabat;
+        cena_laczna_rezerwacji := ilosc_miejsc_do_zarezerwowania * 50 * rabat_uzytkownika;
         
         INSERT INTO Rezerwacja_table (rezerwacja_id, data_rezerwacji, cena_laczna, czy_anulowane, repertuar_ref, uzytkownik_ref, bilety)
         VALUES (
-            rezerwacja_seq.NEXTVAL, SYSDATE, v_cena_laczna, 0,
-            (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = v_repertuar_id),
-            v_uzytkownik_ref,
+            rezerwacja_seq.NEXTVAL, SYSDATE, cena_laczna_rezerwacji, 0,
+            (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = id_seansu),
+            referencja_uzytkownika,
             Bilety_Typ()
         )
-        RETURNING rezerwacja_id INTO v_rezerwacja_id;
+        RETURNING rezerwacja_id INTO id_rezerwacji;
         
         -- Tworzenie biletow i aktualizacja statusu miejsc
-        FOR i IN 1 .. p_ilosc_miejsc LOOP
+        FOR i IN 1 .. ilosc_miejsc_do_zarezerwowania LOOP
             SELECT MIN(m.numer)
-            INTO v_miejsce
+            INTO miejsce_do_zarezerwowania
             FROM TABLE(
-                SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = v_sala_id
+                SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = id_sali
             ) m
-            WHERE m.rzad = p_rzad AND m.czy_zajete = 0;
+            WHERE m.rzad = rzad_sali AND m.czy_zajete = 0;
             
-            IF v_miejsce IS NULL THEN
-                RAISE_APPLICATION_ERROR(-20007, 'Brak dost�pnych miejsc w wybranym rz�dzie.');
+            IF miejsce_do_zarezerwowania IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20007, 'Brak dostępnych miejsc w wybranym rzędzie.');
             END IF;
             
-            -- Dodawanie bieletu
+            -- Dodawanie biletu
             INSERT INTO Bilet_table (bilet_id, cena, seans_ref, rzad, miejsce)
             VALUES (
                 bilet_seq.NEXTVAL, 25,
-                (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = v_repertuar_id),
-                p_rzad, v_miejsce
+                (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = id_seansu),
+                rzad_sali, miejsce_do_zarezerwowania
             );
-            -- Zmienienie statusu na zaj�te dla miejsc
-        UPDATE TABLE (
-            SELECT s.miejsca FROM Sala_table s
-            WHERE s.sala_id = v_sala_id
-        ) m
-        SET m.czy_zajete = 1
-        WHERE m.rzad = p_rzad AND m.numer = v_miejsce
-        AND EXISTS (
-            SELECT 1 FROM Repertuar_table r
-            WHERE r.repertuar_id = v_repertuar_id
-            AND r.sala_ref.sala_id = v_sala_id
-        );
+            
+            -- Zmiana statusu na zajęte dla miejsca
+            UPDATE TABLE (
+                SELECT s.miejsca FROM Sala_table s
+                WHERE s.sala_id = id_sali
+            ) m
+            SET m.czy_zajete = 1
+            WHERE m.rzad = rzad_sali AND m.numer = miejsce_do_zarezerwowania
+            AND EXISTS (
+                SELECT 1 FROM Repertuar_table r
+                WHERE r.repertuar_id = id_seansu
+                AND r.sala_ref.sala_id = id_sali
+            );
         END LOOP;
-        EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono filmu lub sali.');
-    WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20005, 'Nieznany blad: ' || SQLERRM);
-    END ZarezerwujSeans;
-    
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono filmu lub sali.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20005, 'Nieznany błąd: ' || SQLERRM);
+    END Zarezerwuj_Seans;
 
-    PROCEDURE AnulujRezerwacje(
-        p_tytul VARCHAR2,
-        p_data_seansu DATE,
-        p_email VARCHAR2
+    PROCEDURE Anuluj_Rezerwacje(
+        tytul_filmu VARCHAR2,
+        data_seansu_in DATE,
+        email_uzytkownika VARCHAR2
     ) IS
-        v_repertuar_id NUMBER;
-        v_uzytkownik_ref REF Uzytkownik;
-        v_sala_id NUMBER;
-        v_rezerwacja_id NUMBER;
-        v_data_seansu DATE;
+        id_seansu NUMBER;
+        referencja_uzytkownika REF Uzytkownik;
+        id_sali NUMBER;
+        id_rezerwacji NUMBER;
     BEGIN
         -- Pobierz repertuar_id i id_sali
-        SELECT r.repertuar_id, r.sala_ref.sala_id, r.data_rozpoczecia
-        INTO v_repertuar_id, v_sala_id, v_data_seansu
+        SELECT r.repertuar_id, r.sala_ref.sala_id
+        INTO id_seansu, id_sali
         FROM Repertuar_table r
         JOIN Film_table f ON REF(f) = r.film_ref
-        WHERE f.tytul = p_tytul
-        AND r.data_rozpoczecia = p_data_seansu;
+        WHERE f.tytul = tytul_filmu
+        AND r.data_rozpoczecia = data_seansu_in;
     
-    IF v_data_seansu - INTERVAL '1' HOUR < SYSDATE THEN
-        DBMS_OUTPUT.PUT_LINE('Nie mozna anulowac rezerwacji na mniej niz godzine przed seansem.');
-        RETURN;
-    END IF;
+        IF data_seansu_in - INTERVAL '1' HOUR < SYSDATE THEN
+            DBMS_OUTPUT.PUT_LINE('Nie można anulować rezerwacji na mniej niż godzinę przed seansem.');
+            RETURN;
+        END IF;
     
         SELECT REF(u)
-        INTO v_uzytkownik_ref
+        INTO referencja_uzytkownika
         FROM Uzytkownik_table u
-        WHERE u.email = p_email;
+        WHERE u.email = email_uzytkownika;
     
-        -- Pobierz id_rezerwacji uzytkownika
+        -- Pobierz id_rezerwacji użytkownika
         SELECT r.rezerwacja_id
-        INTO v_rezerwacja_id
+        INTO id_rezerwacji
         FROM Rezerwacja_table r
-        WHERE r.uzytkownik_ref = v_uzytkownik_ref
-        AND r.repertuar_ref = (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = v_repertuar_id)
+        WHERE r.uzytkownik_ref = referencja_uzytkownika
+        AND r.repertuar_ref = (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = id_seansu)
         AND r.czy_anulowane = 0;
     
-        -- Anulowanie rezerwacji dla u�ytkownika
-        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obs�u�y wyzwalacz.');
+        -- Anulowanie rezerwacji dla użytkownika
+        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obsłuży wyzwalacz.');
         UPDATE Rezerwacja_table
         SET czy_anulowane = 1
-        WHERE rezerwacja_id = v_rezerwacja_id;
+        WHERE rezerwacja_id = id_rezerwacji;
         COMMIT;
     EXCEPTION
-    WHEN OTHERS THEN
-        ROLLBACK;
-    END AnulujRezerwacje;
+        WHEN OTHERS THEN
+            ROLLBACK;
+    END Anuluj_Rezerwacje;
 
-
-    
-    PROCEDURE PokazRezerwacje(
-        p_email VARCHAR2
+    PROCEDURE Pokaz_Rezerwacje(
+        email_uzytkownika VARCHAR2
     ) IS
-        v_uzytkownik_ref REF Uzytkownik;
-        v_count NUMBER := 0;
+        referencja_uzytkownika REF Uzytkownik;
+        ilosc_rezerwacji NUMBER := 0;
     BEGIN
         SELECT REF(u)
-        INTO v_uzytkownik_ref
+        INTO referencja_uzytkownika
         FROM Uzytkownik_table u
-        WHERE u.email = p_email;
+        WHERE u.email = email_uzytkownika;
         
-        -- Sprawdzenie czy uzytkownik ma rezerwacje
+        -- Sprawdzenie czy użytkownik ma rezerwacje
         SELECT COUNT(*)
-        INTO v_count
+        INTO ilosc_rezerwacji
         FROM Rezerwacja_table r
-        WHERE r.uzytkownik_ref = v_uzytkownik_ref;
+        WHERE r.uzytkownik_ref = referencja_uzytkownika;
     
-    IF v_count = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla uzytkownika ' || p_email);
-        RETURN;
-    END IF;
+        IF ilosc_rezerwacji = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla użytkownika ' || email_uzytkownika);
+            RETURN;
+        END IF;
         
         FOR r IN (
-            SELECT r.rezerwacja_id, f.tytul, rep.data_rozpoczecia,TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu
+            SELECT r.rezerwacja_id, f.tytul, rep.data_rozpoczecia, TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu
             , r.cena_laczna, r.czy_anulowane
             FROM Rezerwacja_table r
             JOIN Repertuar_table rep ON REF(rep) = r.repertuar_ref
             JOIN Film_table f ON REF(f) = rep.film_ref
-            WHERE r.uzytkownik_ref = v_uzytkownik_ref
+            WHERE r.uzytkownik_ref = referencja_uzytkownika
         ) LOOP
             DBMS_OUTPUT.PUT_LINE('Rezerwacja ID: ' || r.rezerwacja_id || ' | Film: ' || r.tytul || ' | Data: ' || r.data_rozpoczecia  || 
-                             ' | Godzina: ' || r.godzina_seansu|| ' | Cena: ' || r.cena_laczna || ' | Anulowana: ' || r.czy_anulowane);
+                             ' | Godzina: ' || r.godzina_seansu || ' | Cena: ' || r.cena_laczna || ' | Anulowana: ' || r.czy_anulowane);
         END LOOP;
-    END PokazRezerwacje;
-    
-    
-PROCEDURE PokazSeanse(
-    p_data_seansu DATE
-) IS
-BEGIN
-    FOR r IN (
-        SELECT f.tytul, 
-               rep.data_rozpoczecia, 
-               TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu,
-               (SELECT COUNT(*) FROM TABLE(
-                   SELECT s.miejsca FROM Sala_table s 
-                   WHERE s.sala_id = rep.sala_ref.sala_id
-               ) WHERE czy_zajete = 0) AS dostepne_miejsca
-        FROM Repertuar_table rep
-        JOIN Film_table f ON REF(f) = rep.film_ref
-        WHERE TRUNC(rep.data_rozpoczecia) = TRUNC(p_data_seansu)
-    ) LOOP
-        DBMS_OUTPUT.PUT_LINE('Film: ' || r.tytul || 
-                             ' | Data: ' || TO_CHAR(r.data_rozpoczecia, 'YYYY-MM-DD') || 
-                             ' | Godzina: ' || r.godzina_seansu || 
-                             ' | Dostepne miejsca: ' || r.dostepne_miejsca);
-    END LOOP;
-END PokazSeanse;
+    END Pokaz_Rezerwacje;
 
+    PROCEDURE Pokaz_Seanse(
+        data_seansu_in DATE
+    ) IS
+    BEGIN
+        FOR r IN (
+            SELECT f.tytul, 
+                   rep.data_rozpoczecia, 
+                   TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu,
+                   (SELECT COUNT(*) FROM TABLE(
+                       SELECT s.miejsca FROM Sala_table s 
+                       WHERE s.sala_id = rep.sala_ref.sala_id
+                   ) WHERE czy_zajete = 0) AS dostepne_miejsca
+            FROM Repertuar_table rep
+            JOIN Film_table f ON REF(f) = rep.film_ref
+            WHERE TRUNC(rep.data_rozpoczecia) = TRUNC(data_seansu_in)
+        ) LOOP
+            DBMS_OUTPUT.PUT_LINE('Film: ' || r.tytul || 
+                                 ' | Data: ' || TO_CHAR(r.data_rozpoczecia, 'YYYY-MM-DD') || 
+                                 ' | Godzina: ' || r.godzina_seansu || 
+                                 ' | Dostępne miejsca: ' || r.dostepne_miejsca);
+        END LOOP;
+    END Pokaz_Seanse;
 
-PROCEDURE ZmienTypKonta(
-    p_email VARCHAR2,
-    p_typ_konta VARCHAR2
-) IS
-    v_count NUMBER := 0;
-BEGIN
-    SELECT COUNT(*) INTO v_count FROM Uzytkownik_table WHERE email = p_email;
-    IF v_count = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('Uzytkownik o podanym emailu nie istnieje.');
-        RETURN;
-    END IF;
-    
-    IF p_typ_konta NOT IN ('standard', 'premium') THEN
-        DBMS_OUTPUT.PUT_LINE('Niepoprawny typ konta. Dozwolone wartosci: standard, premium.');
-        RETURN;
-    END IF;
-    
-    UPDATE Uzytkownik_table
-    SET rola = p_typ_konta
-    WHERE email = p_email;
-    
-    COMMIT;
-    DBMS_OUTPUT.PUT_LINE('Typ konta u�ytkownika ' || p_email || ' zostal zmieniony na ' || p_typ_konta);
-END ZmienTypKonta;
+    PROCEDURE Zmien_Typ_Konta(
+        email_uzytkownika VARCHAR2,
+        nowy_typ_konta VARCHAR2
+    ) IS
+        czy_uzytkownik_istnieje NUMBER := 0;
+    BEGIN
+        SELECT COUNT(*) INTO czy_uzytkownik_istnieje FROM Uzytkownik_table WHERE email = email_uzytkownika;
+        IF czy_uzytkownik_istnieje = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Użytkownik o podanym emailu nie istnieje.');
+            RETURN;
+        END IF;
+        
+        IF nowy_typ_konta NOT IN ('standard', 'premium') THEN
+            DBMS_OUTPUT.PUT_LINE('Niepoprawny typ konta. Dozwolone wartości: standard, premium.');
+            RETURN;
+        END IF;
+        
+        UPDATE Uzytkownik_table
+        SET rola = nowy_typ_konta
+        WHERE email = email_uzytkownika;
+        DBMS_OUTPUT.PUT_LINE('Typ konta użytkownika ' || email_uzytkownika || ' został zmieniony na ' || nowy_typ_konta);
+    END Zmien_Typ_Konta;
 
 END Klient_Pkg;
 /
