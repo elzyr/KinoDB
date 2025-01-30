@@ -161,7 +161,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         INSERT INTO Rezerwacja_table VALUES (
             rezerwacja_seq.NEXTVAL,
             SYSDATE,
-            25 * ilosc_miejsc_do_zarezerwowania * rabat,
+            50 * ilosc_miejsc_do_zarezerwowania * rabat,
             0,
             ref_repertuar, 
             ref_uzytkownika, 

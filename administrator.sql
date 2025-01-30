@@ -130,13 +130,13 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     ) IS
         miejsca_rezerwacja Miejsca_Typ := Miejsca_Typ();
         id_miejsca NUMBER := 1;
-        current_rzad NUMBER;
-        current_miejsce NUMBER;
+        wpisywany_rzad NUMBER;
+        wpisywane_miejsce NUMBER;
     BEGIN
-        FOR current_rzad IN 1..ilosc_rzedow_w_sali LOOP
-            FOR current_miejsce IN 1..miejsca_w_rzedzie_sala LOOP
+        FOR wpisywany_rzad IN 1..ilosc_rzedow_w_sali LOOP
+            FOR wpisywane_miejsce IN 1..miejsca_w_rzedzie_sala LOOP
                 miejsca_rezerwacja.EXTEND;
-                miejsca_rezerwacja(miejsca_rezerwacja.COUNT) := Miejsce(id_miejsca, current_rzad, current_miejsce, 0);
+                miejsca_rezerwacja(miejsca_rezerwacja.COUNT) := Miejsce(id_miejsca, wpisywany_rzad, wpisywane_miejsce, 0);
                 id_miejsca := id_miejsca + 1;
             END LOOP;
         END LOOP;
