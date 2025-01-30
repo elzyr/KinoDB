@@ -117,7 +117,6 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             referencja_sali,
             data_rozpoczecia_filmu
         );
-            DBMS_OUTPUT.PUT_LINE('przeszlo dodawanie');
         EXCEPTION
             WHEN DUP_VAL_ON_INDEX THEN
                 RAISE_APPLICATION_ERROR(-20003, 'Seans koliduje z istniejacymi seansami w tej sali.');
