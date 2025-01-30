@@ -248,5 +248,4 @@ END;
 
 begin
     Klient_Pkg.Pokaz_Rezerwacje('jan@test.pl');
-
 end;
