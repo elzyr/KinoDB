@@ -15,9 +15,9 @@ BEGIN
     Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'));
     Admin_Pkg.dodaj_seans(2, 2, TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(1, 'Jan', 'Kowalski', 20, 'jan@test.pl', 'standard'));
-    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(2, 'Anna', 'Nowak', 16, 'anna@test.pl', 'premium'));
-    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(3, 'Zbigniew', 'Szczupak', 25, 'zbigniew@test.pl', 'premium'));
+    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(NULL, 'Jan', 'Kowalski', 20, 'jan@test.pl', 'standard'));
+    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(NULL, 'Anna', 'Nowak', 16, 'anna@test.pl', 'premium'));
+    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(NULL, 'Zbigniew', 'Szczupak', 25, 'zbigniew@test.pl', 'premium'));
 END;
 /
 
