@@ -48,23 +48,23 @@ BEGIN
     );
 END;
 /
-
-BEGIN
-    Klient_Pkg.PokazSeanseNaDzien(TO_DATE('2026-01-30', 'YYYY-MM-DD'));
-END;
-
-BEGIN
-    Klient_Pkg.ZarezerwujMiejsca(
-        p_email => 'piotr.zielinski@example.com',
-        p_film_tytul => 'Wielka Przygoda',
-        p_ilosc => 5,
-        p_data => TO_DATE('2026-01-30 15:00', 'YYYY-MM-DD HH24:MI'),
-        p_preferencja_rzad => 1 
-    );
-END;
-/
-
-BEGIN
-    Klient_Pkg.PokazRezerwacjeUzytkownika('piotr.zielinski@example.com');
-END;
-/
+--
+--BEGIN
+--    Klient_Pkg.PokazSeanseNaDzien(TO_DATE('2026-01-30', 'YYYY-MM-DD'));
+--END;
+--
+--BEGIN
+--    Klient_Pkg.ZarezerwujMiejsca(
+--        p_email => 'piotr.zielinski@example.com',
+--        p_film_tytul => 'Wielka Przygoda',
+--        p_ilosc => 5,
+--        p_data => TO_DATE('2026-01-30 15:00', 'YYYY-MM-DD HH24:MI'),
+--        p_preferencja_rzad => 1 
+--    );
+--END;
+--/
+--
+--BEGIN
+--    Klient_Pkg.PokazRezerwacjeUzytkownika('piotr.zielinski@example.com');
+--END;
+--/
