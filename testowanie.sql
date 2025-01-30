@@ -1,316 +1,219 @@
-SET SERVEROUTPUT ON;
-
 BEGIN
-    -- Dodawanie kategorii
-    admin_seanse.add_kategoria('Komedia');
-    admin_seanse.add_kategoria('Horror');
-    admin_seanse.add_kategoria('Dramat');
-    admin_seanse.add_kategoria('Sci-Fi');
-    admin_seanse.add_kategoria('Fantasy');
+    -- Dodaj kategorie
+    Admin_Pkg.dodaj_kategorie('Horror');
+    Admin_Pkg.dodaj_kategorie('Familijny');
 
-    DBMS_OUTPUT.PUT_LINE('Kategorie zosta³y dodane.');
-END;
-/
+    -- Dodaj sale
+    Admin_Pkg.dodaj_sale('Sala 1', 5, 10); -- 5 rzêdów, 10 miejsc w rzêdzie
+    Admin_Pkg.dodaj_sale('Sala 2', 3, 8);
 
-BEGIN
-    -- Dodawanie filmów
-    admin_seanse.add_film(
-        p_tytul => 'Wielka Przygoda',
-        p_czas_trwania => 120,
-        p_minimalny_wiek => 7,
-        p_kategoria_id => 1 -- ID kategorii 'Komedia'
-    );
+    -- Dodaj filmy
+    Admin_Pkg.dodaj_film('The Conjuring', 120, 18, 1); -- Horror, wiek 18+
+    Admin_Pkg.dodaj_film('Kraina Lodu', 90, 0, 2);     -- Familijny, brak ograniczeñ
 
-    admin_seanse.add_film(
-        p_tytul => 'Strach w Nocy',
-        p_czas_trwania => 90,
-        p_minimalny_wiek => 17,
-        p_kategoria_id => 2 -- ID kategorii 'Horror'
-    );
+    -- Dodaj seanse
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- Jutro o 10:00
+    Admin_Pkg.dodaj_seans(2, 2, TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- Jutro o 22:00
 
-    admin_seanse.add_film(
-        p_tytul => 'Historia Mi³oœci',
-        p_czas_trwania => 130,
-        p_minimalny_wiek => 12,
-        p_kategoria_id => 3 -- ID kategorii 'Dramat'
-    );
-
-    admin_seanse.add_film(
-        p_tytul => 'Kosmiczna Odyseja',
-        p_czas_trwania => 150,
-        p_minimalny_wiek => 10,
-        p_kategoria_id => 4 -- ID kategorii 'Sci-Fi'
-    );
-
-    admin_seanse.add_film(
-        p_tytul => 'Magiczna Kraina',
-        p_czas_trwania => 110,
-        p_minimalny_wiek => 6,
-        p_kategoria_id => 5 -- ID kategorii 'Fantasy'
-    );
-
-    DBMS_OUTPUT.PUT_LINE('Filmy zosta³y dodane.');
-END;
-/
-
-
--- Poprawne przypadki
-BEGIN
-    -- Dodaj salê
-    admin_seanse.add_sala(
-        p_nazwa => 'Sala 1',
-        p_ilosc_rzedow => 5,
-        p_miejsca_w_rzedzie => 10
-    );
-
-    -- Dodaj film
-    admin_seanse.add_film(
-        p_tytul => 'Film A',
-        p_czas_trwania => 120,
-        p_minimalny_wiek => 12,
-        p_kategoria_id => 1 -- Zak³adaj¹c, ¿e istnieje kategoria o ID 1
-    );
-
-    -- Dodaj seans
-    admin_seanse.add_seans(
-        p_film_id => 1, -- Zak³adaj¹c, ¿e ID filmu to 1
-        p_sala_id => 1, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-30 12:00', 'YYYY-MM-DD HH24:MI')
-    );
-
-    DBMS_OUTPUT.PUT_LINE('Poprawne seanse dodane.');
-END;
-/
-
-BEGIN
-    -- Dodaj salê
-    admin_seanse.add_sala(
-        p_nazwa => 'Sala 2',
-        p_ilosc_rzedow => 5,
-        p_miejsca_w_rzedzie => 10
-    );
-
-    -- Dodaj film
-    admin_seanse.add_film(
-        p_tytul => 'Film A',
-        p_czas_trwania => 120,
-        p_minimalny_wiek => 15,
-        p_kategoria_id => 1 -- Zak³adaj¹c, ¿e istnieje kategoria o ID 1
-    );
-
-    -- Dodaj seans
-    admin_seanse.add_seans(
-        p_film_id => 2, -- Zak³adaj¹c, ¿e ID filmu to 1
-        p_sala_id => 2, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI')
-    );
-    
-    DBMS_OUTPUT.PUT_LINE('Poprawne seanse dodane.');
-END;
-/
-
-
-BEGIN
-    -- Dodaj salê
-    admin_seanse.add_sala(
-        p_nazwa => 'Sala 3',
-        p_ilosc_rzedow => 5,
-        p_miejsca_w_rzedzie => 10
-    );
-
-    -- Dodaj film
-    admin_seanse.add_film(
-        p_tytul => 'Film A',
-        p_czas_trwania => 120,
-        p_minimalny_wiek => 15,
-        p_kategoria_id => 1 -- Zak³adaj¹c, ¿e istnieje kategoria o ID 1
-    );
-
-    -- Dodaj seans
-    admin_seanse.add_seans(
-        p_film_id => 3, -- Zak³adaj¹c, ¿e ID filmu to 1
-        p_sala_id => 3, -- Zak³adaj¹c, ¿e ID sali to 1
-        p_data_rozpoczecia => TO_DATE('2025-01-30 18:00', 'YYYY-MM-DD HH24:MI')
-    );
-    
-    DBMS_OUTPUT.PUT_LINE('Poprawne seanse dodane.');
-END;
-/
-
-
-
-
-
-
-
-
-
--- dodawnie kleinta
-
-BEGIN
-    INSERT INTO Uzytkownik_table VALUES (
-        Uzytkownik(NULL, 'Jan', 'Kowalski', 30, 'jan.kowalski@example.com', 'standard')
-    );
-    
-    INSERT INTO Uzytkownik_table VALUES (
-        Uzytkownik(NULL, 'Iza', 'Kowalska', 16, 'ania.kowalska@example.com', 'premium')
-    );
-    
+    -- Dodaj u¿ytkowników
+    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(1, 'Jan', 'Kowalski', 20, 'jan@test.pl', 'standard'));
+    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(2, 'Anna', 'Nowak', 16, 'anna@test.pl', 'premium'));
     COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('B³¹d inicjalizacji: ' || SQLERRM);
+        ROLLBACK;
+END;
+/
+#
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 1: Próba dodania dwóch filmów na tê sam¹ salê w tym samym czasie');
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- Ju¿ istniej¹cy seans
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
 
 BEGIN
-    INSERT INTO Uzytkownik_table VALUES (
-        Uzytkownik(
-            NULL, -- user_id zostanie automatycznie ustawiony przez wyzwalacz
-            'Piotr',
-            'Zieliñski',
-            40,
-            'piotr.zielinski@example.com',
-            'standard'
-        )
-    );
+    DBMS_OUTPUT.PUT_LINE('Test 2: Przerwa krótsza ni¿ 30 minut miêdzy seansami');
+    -- Film trwa 120 minut, kolejny seans o 12:10 (przerwa 10 minut)
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 12:10:00', 'YYYY-MM-DD HH24:MI:SS'));
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 3: Seans przed 7:00');
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 06:00:00', 'YYYY-MM-DD HH24:MI:SS')); -- 6:00
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 4: Przekroczenie liczby miejsc w sali');
     
-    COMMIT;
+    -- Próba rezerwacji 51 miejsc w Salê 1 (10 miejsc na rzêdzie * 5 rzêdów = 50 miejsc)
+    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 51);
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-select * from Uzytkownik_table
-
-
--- rezerwacje
-
 
 BEGIN
-    Klient_Pkg.PokazSeanse(
-        p_data_seansu => TO_DATE('2025-01-30', 'YYYY-MM-DD')
-    );
-END;
-/
-
-
-SET SERVEROUTPUT ON;
-
-DECLARE
-    v_email VARCHAR2(100);
-    v_typ_konta VARCHAR2(20);
-BEGIN
-    -- Test 1: Poprawna zmiana na 'premium'
-    v_email := 'piotr.zielinski@example.com';
-    v_typ_konta := 'premium';
-    DBMS_OUTPUT.PUT_LINE('Test 1: Próba zmiany konta na ' || v_typ_konta);
-    Klient_Pkg.ZmienTypKonta(v_email, v_typ_konta);
-
-END;
-/
-
--- TEST 1: Rezerwacja seansu
-DECLARE
-    v_test_email VARCHAR2(100) := 'iza.kowalska@example.com';
-    v_test_tytul VARCHAR2(200) := 'Strach w Nocy';
-    v_test_rzad NUMBER := 1;
-    v_test_ilosc_miejsc NUMBER := 1;
-    v_test_data_seansu DATE := TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI');
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- TEST : Rezerwacja seansu  na film + 18 dla niepelnotelniej osoby---');
-    Klient_Pkg.ZarezerwujSeans(
-        p_email => v_test_email,
-        p_tytul => v_test_tytul,
-        p_data_seansu => v_test_data_seansu,
-        p_rzad => v_test_rzad,
-        p_ilosc_miejsc => v_test_ilosc_miejsc
-    );
-END;
-/
-
-DECLARE
-    v_test_email VARCHAR2(100) := 'ania.kowalska@example.com';
-BEGIN
-    Klient_Pkg.PokazRezerwacje(
-        p_email => v_test_email
-    );
-END;
-/
-
-
-
-
--- TEST 1: Rezerwacja seansu
-DECLARE
-    v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
-    v_test_tytul VARCHAR2(200) := 'Strach w Nocy';
-    v_test_rzad NUMBER := 3;
-    v_test_ilosc_miejsc NUMBER := 2;
-    v_test_data_seansu DATE := TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI');
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- TEST 1: Rezerwacja seansu ---');
-    Klient_Pkg.ZarezerwujSeans(
-        p_email => v_test_email,
-        p_tytul => v_test_tytul,
-        p_data_seansu => v_test_data_seansu,
-        p_rzad => v_test_rzad,
-        p_ilosc_miejsc => v_test_ilosc_miejsc
-    );
-END;
-/
-
+    DBMS_OUTPUT.PUT_LINE('Test 5: Rezerwacja 5 miejsc w rzêdzie 3');
+    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'Kraina Lodu', TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 5);
     
--- TEST 2: Wyœwietlenie rezerwacji u¿ytkownika
-DECLARE
-    v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- TEST 2: Wyœwietlenie rezerwacji u¿ytkownika ---');
-    Klient_Pkg.PokazRezerwacje(
-        p_email => v_test_email
-    );
+    -- SprawdŸ czy miejsca s¹ ci¹g³e (np. 1-5)
+    FOR r IN (
+        SELECT m.numer 
+        FROM Sala_table s, TABLE(s.miejsca) m 
+        WHERE s.sala_id = 2 AND m.rzad = 3 AND m.czy_zajete = 1
+        ORDER BY m.numer
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE('Miejsce: ' || r.numer);
+    END LOOP;
+    
+    DBMS_OUTPUT.PUT_LINE('TEST UDANY: Miejsca zarezerwowane w rzêdzie');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
 
--- TEST 3: Wyœwietlenie seansów na podan¹ datê
-DECLARE
-    v_test_data_seansu DATE := TO_DATE('2025-01-31', 'YYYY-MM-DD');
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- TEST 3: Wyœwietlenie seansów na podan¹ datê ---');
-    Klient_Pkg.PokazSeanse(
-        p_data_seansu => v_test_data_seansu
-    );
+    DBMS_OUTPUT.PUT_LINE('Test 6: Brak miejsc w preferowanym rzêdzie');
+    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 11); -- Rz¹d 1 ma 10 miejsc
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 7: Anulowanie na godzinê przed seansem');
+    
+    -- Dodaj seans za 30 minut od ustalonej daty (2026-01-01 00:30:00)
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-01 00:30:00', 'YYYY-MM-DD HH24:MI:SS')); 
+    
+    -- Rezerwacja
+    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-01 00:30:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 2);
+    
+    -- Próba anulowania 59 minut przed
+    Klient_Pkg.Anuluj_Rezerwacje('The Conjuring', TO_DATE('2026-01-01 00:30:00', 'YYYY-MM-DD HH24:MI:SS'), 'jan@test.pl');
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+    
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 8: Sprawdzenie zni¿ki 10% dla premium');
+    
+    Klient_Pkg.Zarezerwuj_Seans('anna@test.pl', 'Kraina Lodu', TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 2);
+    
+    DECLARE
+        v_cena NUMBER;
+    BEGIN
+        SELECT cena_laczna INTO v_cena 
+        FROM Rezerwacja_table 
+        WHERE uzytkownik_ref = (SELECT REF(u) FROM Uzytkownik_table u WHERE email = 'anna@test.pl');
+        
+        IF v_cena = 90 THEN
+            DBMS_OUTPUT.PUT_LINE('TEST UDANY: Cena z rabatem 10%');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Cena ' || v_cena);
+        END IF;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+    
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 9: Podwójna rezerwacja tego samego miejsca');
+    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 1);
+    Klient_Pkg.Zarezerwuj_Seans('anna@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 1);
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+    
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 10: Rezerwacja filmu 18+ przez 15-latka');
+    Klient_Pkg.Zarezerwuj_Seans('anna@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 1);
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+    
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 11: Zmiana konta na premium');
+    Klient_Pkg.Zmien_Typ_Konta('jan@test.pl', 'premium');
+    
+    -- SprawdŸ, czy typ konta zosta³ zmieniony
+    DECLARE
+        v_rola VARCHAR2(20);
+    BEGIN
+        SELECT rola INTO v_rola 
+        FROM Uzytkownik_table 
+        WHERE email = 'jan@test.pl';
+        
+        IF v_rola = 'premium' THEN
+            DBMS_OUTPUT.PUT_LINE('TEST UDANY: Zmieniono typ konta');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zmieniono typu konta');
+        END IF;
+    END;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 13: Pokazanie rezerwacji u¿ytkownika jan@test.pl');
+    Klient_Pkg.Pokaz_Rezerwacje('jan@test.pl');
+    DBMS_OUTPUT.PUT_LINE('TEST ZAKOÑCZONY: Rezerwacje wyœwietlone.');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: ' || SQLERRM);
 END;
 /
 
--- TEST 4: Anulowanie rezerwacji
-DECLARE
-    v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
-    v_test_tytul VARCHAR2(200) := 'Strach w Nocy';
-    v_test_data_seansu DATE := TO_DATE('2025-01-31 20:00', 'YYYY-MM-DD HH24:MI');
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- TEST 4: Anulowanie rezerwacji ---');
-    Klient_Pkg.AnulujRezerwacje(
-        p_tytul => v_test_tytul,
-        p_data_seansu => v_test_data_seansu,
-        p_email => v_test_email
-    );
+    DBMS_OUTPUT.PUT_LINE('Test 14: Pokazanie seansów na dzieñ 2026-01-02');
+    Klient_Pkg.Pokaz_Seanse(TO_DATE('2026-01-02', 'YYYY-MM-DD'));
+    DBMS_OUTPUT.PUT_LINE('TEST ZAKOÑCZONY: Seanse wyœwietlone.');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: ' || SQLERRM);
 END;
 /
 
--- TEST 5: Wyœwietlenie rezerwacji po anulowaniu
-DECLARE
-    v_test_email VARCHAR2(100) := 'piotr.zielinski@example.com';
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- TEST 5: Wyœwietlenie rezerwacji po anulowaniu ---');
-    Klient_Pkg.PokazRezerwacje(
-        p_email => v_test_email
-    );
+    DBMS_OUTPUT.PUT_LINE('Test 20: Dodanie kategorii z istniej¹c¹ nazw¹ "Horror"');
+    Admin_Pkg.dodaj_kategorie('Horror');
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zg³oszono b³êdu przy dodawaniu istniej¹cej kategorii.');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
 
--- TEST 6: Sprawdzenie dostêpnoœci miejsc po anulowaniu
-DECLARE
-    v_test_data_seansu DATE := TO_DATE('2025-01-30 19:00', 'YYYY-MM-DD HH24:MI');
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- TEST 6: Sprawdzenie dostêpnoœci miejsc po anulowaniu ---');
-    Klient_Pkg.PokazSeanse(
-        p_data_seansu => v_test_data_seansu
-    );
-END;
-/
+
 
