@@ -1,10 +1,9 @@
 BEGIN
-    -- 1. Usuwanie Wyzwalaczy (Triggers)
     BEGIN
         EXECUTE IMMEDIATE 'DROP TRIGGER trg_rezerwacja_data';
     EXCEPTION
         WHEN OTHERS THEN
-            IF SQLCODE != -4080 THEN -- ORA-04080: trigger does not exist
+            IF SQLCODE != -4080 THEN
                 RAISE;
             END IF;
     END;
@@ -27,12 +26,11 @@ BEGIN
             END IF;
     END;
 
-    -- 2. Usuwanie Pakietï¿½w i Ich Ciaï¿½ (Packages and Package Bodies)
     BEGIN
         EXECUTE IMMEDIATE 'DROP PACKAGE BODY Rezerwacja_Pkg';
     EXCEPTION
         WHEN OTHERS THEN
-            IF SQLCODE != -4043 THEN -- ORA-04043: object does not exist
+            IF SQLCODE != -4043 THEN
                 RAISE;
             END IF;
     END;
@@ -82,22 +80,20 @@ BEGIN
             END IF;
     END;
 
-    -- 3. Usuwanie Sekwencji (Sequences)
     BEGIN
         EXECUTE IMMEDIATE 'DROP SEQUENCE Bilet_SEQ';
     EXCEPTION
         WHEN OTHERS THEN
-            IF SQLCODE != -2289 THEN -- ORA-02289: sequence does not exist
+            IF SQLCODE != -2289 THEN 
                 RAISE;
             END IF;
     END;
 
-    -- 4. Usuwanie Tabel Obiektowych (Object Tables)
     BEGIN
         EXECUTE IMMEDIATE 'DROP TABLE Rezerwacja_table CASCADE CONSTRAINTS';
     EXCEPTION
         WHEN OTHERS THEN
-            IF SQLCODE != -942 THEN -- ORA-00942: table or view does not exist
+            IF SQLCODE != -942 THEN 
                 RAISE;
             END IF;
     END;
@@ -174,12 +170,11 @@ BEGIN
             END IF;
     END;
 
-    -- 5. Usuwanie Typï¿½w Obiektowych (Object Types)
     BEGIN
         EXECUTE IMMEDIATE 'DROP TYPE Rezerwacja FORCE';
     EXCEPTION
         WHEN OTHERS THEN
-            IF SQLCODE != -4043 THEN -- ORA-04043: object does not exist
+            IF SQLCODE != -4043 THEN 
                 RAISE;
             END IF;
     END;
@@ -256,7 +251,6 @@ BEGIN
             END IF;
     END;
     
-    -- Usuwanie innych typï¿½w, jeï¿½li istniejï¿½ (np. Bilety_Typ)
     BEGIN
         EXECUTE IMMEDIATE 'DROP TYPE Bilety_Typ FORCE';
     EXCEPTION
@@ -269,7 +263,6 @@ END;
 /
 
     
--- Usuniêcie sekwencji, jeœli istniej¹
 BEGIN
     EXECUTE IMMEDIATE 'DROP SEQUENCE kategoria_seq';
 EXCEPTION
@@ -359,14 +352,12 @@ CREATE SEQUENCE rezerwacja_seq START WITH 1 INCREMENT BY 1;
 -- Sekcja: Tworzenie typów obiektów
 -- -------------------------------
 
--- Typ Kategoria
 CREATE OR REPLACE TYPE Kategoria AS OBJECT (
     kategoria_id NUMBER,
     nazwa VARCHAR2(100)
 );
 /
 
--- Typ Miejsce
 CREATE OR REPLACE TYPE Miejsce AS OBJECT (
     miejsce_id NUMBER,
     rzad NUMBER,
@@ -378,7 +369,6 @@ CREATE OR REPLACE TYPE Miejsce AS OBJECT (
 CREATE OR REPLACE TYPE Miejsca_Typ AS TABLE OF Miejsce;
 /
 
--- Typ Sala
 CREATE OR REPLACE TYPE Sala AS OBJECT (
     sala_id NUMBER,
     nazwa VARCHAR2(50),
@@ -386,7 +376,6 @@ CREATE OR REPLACE TYPE Sala AS OBJECT (
 );
 /
 
--- Typ Uzytkownik
 CREATE OR REPLACE TYPE Uzytkownik AS OBJECT (
     user_id    NUMBER,
     imie       VARCHAR2(50),
@@ -397,7 +386,6 @@ CREATE OR REPLACE TYPE Uzytkownik AS OBJECT (
 );
 /
 
--- Typ Film
 CREATE OR REPLACE TYPE Film AS OBJECT (
     film_id NUMBER,
     tytul VARCHAR2(200),
@@ -407,7 +395,6 @@ CREATE OR REPLACE TYPE Film AS OBJECT (
 );
 /
 
--- Typ Repertuar
 CREATE OR REPLACE TYPE Repertuar AS OBJECT (
     repertuar_id NUMBER,
     film_ref REF Film,
@@ -418,7 +405,6 @@ CREATE OR REPLACE TYPE Repertuar AS OBJECT (
 );
 /
 
--- Typ Bilet
 CREATE OR REPLACE TYPE Bilet AS OBJECT (
     bilet_id NUMBER,
     cena NUMBER(5,2),
@@ -429,11 +415,9 @@ CREATE OR REPLACE TYPE Bilet AS OBJECT (
 );
 /
 
--- Typ Bilety_Typ
 CREATE OR REPLACE TYPE Bilety_Typ AS TABLE OF REF Bilet;
 /
 
--- Typ Rezerwacja
 CREATE OR REPLACE TYPE Rezerwacja AS OBJECT (
     rezerwacja_id NUMBER,
     data_rezerwacji DATE, 
@@ -449,14 +433,13 @@ CREATE OR REPLACE TYPE Rezerwacja AS OBJECT (
 -- Sekcja: Tworzenie tabel
 -- -------------------------------
 
--- Tabela Kategoria_table
 CREATE TABLE Kategoria_table OF Kategoria (
     PRIMARY KEY (kategoria_id),
-    CONSTRAINT kategoria_nazwa_ck CHECK (nazwa IS NOT NULL)
+    CONSTRAINT kategoria_nazwa_ck CHECK (nazwa IS NOT NULL),
+    CONSTRAINT kategoria_nazwa_unique UNIQUE(nazwa)
 );
 /
 
--- Wyzwalacz dla Kategoria_table
 CREATE OR REPLACE TRIGGER trg_kategoria_id
 BEFORE INSERT ON Kategoria_table
 FOR EACH ROW
@@ -467,14 +450,12 @@ BEGIN
 END;
 /
 
--- Tabela Sala_table
 CREATE TABLE Sala_table OF Sala (
     PRIMARY KEY (sala_id),
     CONSTRAINT sala_nazwa_ck CHECK (nazwa IS NOT NULL)
 ) NESTED TABLE miejsca STORE AS miejsca_nt;
 /
 
--- Wyzwalacz dla Sala_table
 CREATE OR REPLACE TRIGGER trg_sala_id
 BEFORE INSERT ON Sala_table
 FOR EACH ROW
@@ -485,7 +466,6 @@ BEGIN
 END;
 /
 
--- Tabela Uzytkownik_table
 CREATE TABLE Uzytkownik_table OF Uzytkownik (
     PRIMARY KEY (user_id),
     CONSTRAINT uzytkownik_email_unique UNIQUE(email),
@@ -494,7 +474,6 @@ CREATE TABLE Uzytkownik_table OF Uzytkownik (
 );
 /
 
--- Wyzwalacz dla Uzytkownik_table
 CREATE OR REPLACE TRIGGER trg_uzytkownik_id
 BEFORE INSERT ON Uzytkownik_table
 FOR EACH ROW
@@ -505,7 +484,6 @@ BEGIN
 END;
 /
 
--- Tabela Film_table
 CREATE TABLE Film_table OF Film (
     PRIMARY KEY (film_id),
     CONSTRAINT film_czas_trwania_ck CHECK (czas_trwania > 0),
@@ -513,7 +491,6 @@ CREATE TABLE Film_table OF Film (
 );
 /
 
--- Wyzwalacz dla Film_table
 CREATE OR REPLACE TRIGGER trg_film_id
 BEFORE INSERT ON Film_table
 FOR EACH ROW
@@ -524,13 +501,11 @@ BEGIN
 END;
 /
 
--- Tabela Repertuar_table
 CREATE TABLE Repertuar_table OF Repertuar (
     PRIMARY KEY (repertuar_id)
 );
 /
 
--- Wyzwalacz dla Repertuar_table
 CREATE OR REPLACE TRIGGER trg_repertuar_id
 BEFORE INSERT ON Repertuar_table
 FOR EACH ROW
@@ -541,7 +516,6 @@ BEGIN
 END;
 /
 
--- Tabela Bilet_table
 CREATE TABLE Bilet_table OF Bilet (
     PRIMARY KEY (bilet_id),
     SCOPE FOR (seans_ref) IS Repertuar_table,
@@ -549,7 +523,6 @@ CREATE TABLE Bilet_table OF Bilet (
 );
 /
 
--- Wyzwalacz dla Bilet_table
 CREATE OR REPLACE TRIGGER trg_bilet_id
 BEFORE INSERT ON Bilet_table
 FOR EACH ROW
@@ -560,7 +533,6 @@ BEGIN
 END;
 /
 
--- Tabela Rezerwacja_table
 CREATE TABLE Rezerwacja_table OF Rezerwacja (
     PRIMARY KEY (rezerwacja_id),
     SCOPE FOR (repertuar_ref) IS Repertuar_table,
@@ -570,7 +542,6 @@ CREATE TABLE Rezerwacja_table OF Rezerwacja (
 ) NESTED TABLE bilety STORE AS bilety_nt;
 /
 
--- Wyzwalacz dla Rezerwacja_table
 CREATE OR REPLACE TRIGGER trg_rezerwacja_id
 BEFORE INSERT ON Rezerwacja_table
 FOR EACH ROW
@@ -582,20 +553,19 @@ END;
 /
 
 -- -------------------------------
--- Sekcja: Tworzenie ciaï¿½ typï¿½w obiektï¿½w
+-- Sekcja: Tworzenie cial typow w obiekach
 -- -------------------------------
 CREATE OR REPLACE TYPE BODY Repertuar AS
     MEMBER FUNCTION ilosc_miejsc_zajetych RETURN NUMBER IS
         v_ilosc NUMBER;
         v_sala_id NUMBER;
     BEGIN
-        -- Pobierz sala_id z referencji SELF.sala_ref
         SELECT s.sala_id
           INTO v_sala_id
           FROM Sala_table s
          WHERE REF(s) = SELF.sala_ref;
 
-        -- Zlicz zajï¿½te miejsca w zagnieï¿½dï¿½onej tabeli
+        -- Liczenie znalezionych miejsc z tabeli
         SELECT COUNT(*)
           INTO v_ilosc
           FROM TABLE(
@@ -611,13 +581,12 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
     MEMBER FUNCTION data_zakonczenia RETURN DATE IS
         v_czas_trwania NUMBER;
     BEGIN
-        -- Pobierz czas trwania filmu
+    
         SELECT f.czas_trwania 
           INTO v_czas_trwania
           FROM Film_table f
          WHERE REF(f) = SELF.film_ref;
 
-        -- Oblicz datï¿½ zakoï¿½czenia seansu
         RETURN SELF.data_rozpoczecia + (v_czas_trwania / (24 * 60));
     END data_zakonczenia;
 END;
@@ -642,7 +611,6 @@ END;
 -- Sekcja: Tworzenie wyzwalaczy
 -- -------------------------------
 
--- Wyzwalacz dla sprawdzenia daty rezerwacji
 CREATE OR REPLACE TRIGGER trg_rezerwacja_data
 BEFORE INSERT OR UPDATE ON Rezerwacja_table
 FOR EACH ROW
@@ -662,8 +630,6 @@ END;
 /
 
 
-        
--- Wyzwalacz na zwalnianie miejsc przy anulowaniu rezerwacji
 CREATE OR REPLACE TRIGGER release_seat_on_cancel
 AFTER UPDATE OF czy_anulowane ON Rezerwacja_table
 FOR EACH ROW
@@ -671,7 +637,6 @@ WHEN (NEW.czy_anulowane = 1)
 DECLARE
     v_sala_id NUMBER;
 BEGIN
-    -- Pobranie ID sali z powi¹zanego repertuaru
     BEGIN
         SELECT r.sala_ref.sala_id
         INTO v_sala_id
@@ -679,7 +644,7 @@ BEGIN
         WHERE REF(r) = :NEW.repertuar_ref;
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            DBMS_OUTPUT.PUT_LINE('B³¹d: Nie znaleziono powi¹zanej sali dla rezerwacji.');
+            DBMS_OUTPUT.PUT_LINE('Blad: Nie znaleziono powizzanej sali dla rezerwacji.');
             RETURN;
     END;
 
@@ -692,7 +657,6 @@ BEGIN
             FROM TABLE(CAST(:OLD.bilety AS Bilety_Typ))
         )
     ) LOOP
-        -- Aktualizacja statusu miejsc w Sala_table
         UPDATE TABLE (
             SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = v_sala_id
         ) m
@@ -709,14 +673,12 @@ END;
 
 
         
--- Wyzwalacz na unikalnoï¿½ï¿½ seansï¿½w w sali
 CREATE OR REPLACE TRIGGER ensure_unique_seans_per_sala
 BEFORE INSERT OR UPDATE ON Repertuar_table
 FOR EACH ROW
 DECLARE
     v_count NUMBER;
 BEGIN
-    -- Sprawdï¿½, czy w tej samej sali i o tej samej godzinie nie ma innego seansu
     SELECT COUNT(*)
       INTO v_count
       FROM Repertuar_table r
@@ -725,7 +687,7 @@ BEGIN
        AND r.repertuar_id != :NEW.repertuar_id;
 
     IF v_count > 0 THEN
-        RAISE_APPLICATION_ERROR(-20005, 'W jednej sali w tym samym czasie moï¿½e byï¿½ tylko jeden seans.');
+        RAISE_APPLICATION_ERROR(-20005, 'W jednej sali w tym samym czasie moze byc tylko jeden seans.');
     END IF;
 END;
 /
