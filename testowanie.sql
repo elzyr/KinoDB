@@ -62,7 +62,7 @@ END;
 
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 5: Przekroczenie liczby miejsc w sali');
-    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 5);
+    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 10);
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
 EXCEPTION
     WHEN OTHERS THEN
