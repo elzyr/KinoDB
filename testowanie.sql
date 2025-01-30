@@ -62,7 +62,7 @@ END;
 
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 5: Przekroczenie liczby miejsc w sali');
-    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 51);
+    Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 5);
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
 EXCEPTION
     WHEN OTHERS THEN
@@ -73,16 +73,7 @@ END;
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 6: Rezerwacja 5 miejsc w rzedzie 3');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'Kraina Lodu', TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 5);
-    -- Sprawdz czy miejsca sa ciagle (np. 1-5)
-    FOR r IN (
-        SELECT m.numer 
-        FROM Sala_table s, TABLE(s.miejsca) m 
-        WHERE s.sala_id = 2 AND m.rzad = 3 AND m.czy_zajete = 1
-        ORDER BY m.numer
-    ) LOOP
-        DBMS_OUTPUT.PUT_LINE('Miejsce: ' || r.numer);
-    END LOOP;
-    
+    klient_pkg.pokaz_rezerwacje('jan@test.pl');
     DBMS_OUTPUT.PUT_LINE('TEST UDANY: Miejsca zarezerwowane w rzedzie');
 EXCEPTION
     WHEN OTHERS THEN
@@ -246,6 +237,3 @@ BEGIN
 END;
 /
 
-begin
-    Klient_Pkg.Pokaz_Rezerwacje('jan@test.pl');
-end;
