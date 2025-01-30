@@ -5,7 +5,7 @@ CREATE OR REPLACE PACKAGE Klient_Pkg AS
         email_uzytkownika VARCHAR2,
         tytul_filmu VARCHAR2,
         data_seansu_in DATE,
-        rzad_sali NUMBER,
+        preferencja_rzedu NUMBER,
         ilosc_miejsc_do_zarezerwowania NUMBER
     );
   
@@ -71,7 +71,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         email_uzytkownika VARCHAR2,
         tytul_filmu VARCHAR2,
         data_seansu_in DATE,
-        rzad_sali NUMBER,
+        preferencja_rzedu NUMBER,
         ilosc_miejsc_do_zarezerwowania NUMBER
     ) IS
         cena_laczna_rezerwacji NUMBER := 0;
@@ -136,7 +136,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             FROM TABLE(
                 SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = id_sali
             ) m
-            WHERE m.rzad = rzad_sali AND m.czy_zajete = 0;
+            WHERE m.rzad = preferencja_rzedu AND m.czy_zajete = 0;
             
             IF miejsce_do_zarezerwowania IS NULL THEN
                 RAISE_APPLICATION_ERROR(-20007, 'Brak dostępnych miejsc w wybranym rzędzie.');
@@ -147,7 +147,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             VALUES (
                 bilet_seq.NEXTVAL, 25,
                 (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = id_seansu),
-                rzad_sali, miejsce_do_zarezerwowania
+                preferencja_rzedu, miejsce_do_zarezerwowania
             );
             
             -- Zmiana statusu na zajęte dla miejsca
@@ -156,7 +156,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                 WHERE s.sala_id = id_sali
             ) m
             SET m.czy_zajete = 1
-            WHERE m.rzad = rzad_sali AND m.numer = miejsce_do_zarezerwowania
+            WHERE m.rzad = preferencja_rzedu AND m.numer = miejsce_do_zarezerwowania
             AND EXISTS (
                 SELECT 1 FROM Repertuar_table r
                 WHERE r.repertuar_id = id_seansu
