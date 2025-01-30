@@ -1,3 +1,4 @@
+SET SERVEROUTPUT ON;
 CREATE OR REPLACE PACKAGE Rezerwacja_Pkg AS
 PROCEDURE ZarezerwujSeans(
     p_email VARCHAR2,
@@ -6,8 +7,7 @@ PROCEDURE ZarezerwujSeans(
     p_rzad NUMBER,
     p_ilosc_miejsc NUMBER
 );
-
-    
+  
     PROCEDURE AnulujRezerwacje(
         p_tytul VARCHAR2,
         p_data_seansu DATE,
@@ -23,6 +23,9 @@ PROCEDURE ZarezerwujSeans(
     );
 END Rezerwacja_Pkg;
 /
+
+
+
 
 CREATE OR REPLACE PACKAGE BODY Rezerwacja_Pkg AS
 PROCEDURE ZarezerwujSeans(
@@ -144,12 +147,11 @@ AND EXISTS (
         AND r.czy_anulowane = 0;
     
         -- Anulowanie rezerwacji dla u¿ytkownika
+        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obs³u¿y wyzwalacz.');
         UPDATE Rezerwacja_table
         SET czy_anulowane = 1
         WHERE rezerwacja_id = v_rezerwacja_id;
-    
         COMMIT;
-        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obs³u¿y wyzwalacz.');
     EXCEPTION
     WHEN OTHERS THEN
         ROLLBACK;
@@ -161,12 +163,23 @@ AND EXISTS (
         p_email VARCHAR2
     ) IS
         v_uzytkownik_ref REF Uzytkownik;
+        v_count NUMBER := 0;
     BEGIN
         -- Pobierz referencjê u¿ytkownika
         SELECT REF(u)
         INTO v_uzytkownik_ref
         FROM Uzytkownik_table u
         WHERE u.email = p_email;
+        
+            SELECT COUNT(*)
+    INTO v_count
+    FROM Rezerwacja_table r
+    WHERE r.uzytkownik_ref = v_uzytkownik_ref;
+    
+    IF v_count = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla u¿ytkownika ' || p_email);
+        RETURN;
+    END IF;
         
         FOR r IN (
             SELECT r.rezerwacja_id, f.tytul, rep.data_rozpoczecia,TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu
