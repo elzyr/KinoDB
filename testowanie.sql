@@ -51,6 +51,16 @@ END;
 /
 
 BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 4: Seans po 22:00');
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 22:01:00', 'YYYY-MM-DD HH24:MI:SS'));
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
+
+BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 4: Przekroczenie liczby miejsc w sali');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 51);
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
@@ -236,3 +246,13 @@ BEGIN
 END;
 /
 
+SELECT r.rezerwacja_id,
+       f.tytul,
+       b.rzad,
+       b.miejsce
+FROM Rezerwacja_table r
+JOIN Repertuar_table rep ON REF(rep) = r.repertuar_ref
+JOIN Film_table f ON REF(f) = rep.film_ref
+JOIN TABLE(r.bilety) b_ref ON 1=1
+JOIN Bilet_table b ON b.bilet_id = CAST(b_ref AS NUMBER)
+WHERE r.uzytkownik_ref = (SELECT REF(u) FROM Uzytkownik_table u WHERE u.email = 'jan@test.pl');

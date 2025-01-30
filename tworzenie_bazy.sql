@@ -515,13 +515,6 @@ BEGIN
 END;
 /
 
-CREATE TABLE Bilet_table OF Bilet (
-    PRIMARY KEY (bilet_id),
-    SCOPE FOR (seans_ref) IS Repertuar_table,
-    CONSTRAINT bilet_cena_ck CHECK (cena > 0)
-);
-/
-
 CREATE OR REPLACE TRIGGER trg_bilet_id
 BEFORE INSERT ON Bilet_table
 FOR EACH ROW
