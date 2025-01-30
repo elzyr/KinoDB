@@ -1,12 +1,13 @@
 SET SERVEROUTPUT ON;
 CREATE OR REPLACE PACKAGE Klient_Pkg AS
-PROCEDURE ZarezerwujSeans(
-    p_email VARCHAR2,
-    p_tytul VARCHAR2,
-    p_data_seansu DATE,
-    p_rzad NUMBER,
-    p_ilosc_miejsc NUMBER
-);
+
+    PROCEDURE ZarezerwujSeans(
+        p_email VARCHAR2,
+        p_tytul VARCHAR2,
+        p_data_seansu DATE,
+        p_rzad NUMBER,
+        p_ilosc_miejsc NUMBER
+    );
   
     PROCEDURE AnulujRezerwacje(
         p_tytul VARCHAR2,
@@ -28,10 +29,9 @@ PROCEDURE ZarezerwujSeans(
     );
     
     PROCEDURE SprawdzWiek(
-    p_email VARCHAR2,
-    p_tytul VARCHAR2
+        p_email VARCHAR2,
+        p_tytul VARCHAR2
 );
-
 
 END Klient_Pkg;
 /
@@ -54,16 +54,15 @@ BEGIN
     FROM Uzytkownik_table u
     WHERE u.email = p_email;
     
-    -- Pobranie wymaganego wieku dla filmu
+    -- Pobranie minimalnego wieku po tytule filmu
     SELECT MIN(f.minimalny_wiek) 
     INTO v_wiek_filmu
     FROM Film_table f 
-    WHERE f.tytul = p_tytul
-    FETCH FIRST 1 ROW ONLY;
+    WHERE f.tytul = p_tytul;
     
-    -- Sprawdzenie wieku u¿ytkownika
+    -- Sprawdzenie wieku
     IF v_wiek_usera < v_wiek_filmu THEN
-        RAISE_APPLICATION_ERROR(-20008, 'U¿ytkownik nie spe³nia wymaganego wieku dla tego filmu.');
+        RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie spe³nia wymaganego wieku dla tego filmu.');
     END IF;
 END SprawdzWiek;
 
@@ -83,20 +82,21 @@ PROCEDURE ZarezerwujSeans(
     v_rabat NUMBER := 1.0;
     v_typ_konta VARCHAR2(20);
 BEGIN
-            -- Sprawdzenie wieku u¿ytkownika przed rezerwacj¹
+    -- Wywolanie procedury sprawdzajacej wiek
     BEGIN
         SprawdzWiek(p_email, p_tytul);
             EXCEPTION
         WHEN OTHERS THEN
             DBMS_OUTPUT.PUT_LINE('User nie spelnia minimalnego wieku by pojsc na film' );
-            RETURN; -- Przerywamy rezerwacjê jeœli u¿ytkownik nie spe³nia wymagañ wiekowych
+            RETURN;
     END;
-    
+        -- Spradzamy czy uzytkownik kwalifikuje sie na rabat
        SELECT rola INTO v_typ_konta FROM Uzytkownik_table WHERE email = p_email;
             IF v_typ_konta = 'premium' THEN
-                v_rabat := 0.9; -- Rabat 10% dla u¿ytkowników premium
+                v_rabat := 0.9; 
         END IF;
-        -- Pobierz repertuar_id na podstawie tytu³u filmu
+        
+        -- Pobieranie id_repertuaru
         SELECT r.repertuar_id
         INTO v_repertuar_id
         FROM Repertuar_table r
@@ -104,13 +104,12 @@ BEGIN
         WHERE f.tytul = p_tytul
         AND r.data_rozpoczecia = p_data_seansu;
         
-        -- Pobierz sala_id
+        -- Pobierz sale danego repertuaru
         SELECT r.sala_ref.sala_id
         INTO v_sala_id
         FROM Repertuar_table r
         WHERE r.repertuar_id = v_repertuar_id;
         
-        -- Pobierz referencjê u¿ytkownika
         SELECT REF(u)
         INTO v_uzytkownik_ref
         FROM Uzytkownik_table u
@@ -128,9 +127,8 @@ BEGIN
         )
         RETURNING rezerwacja_id INTO v_rezerwacja_id;
         
-        -- Tworzenie biletów i aktualizacja statusu miejsc
+        -- Tworzenie biletow i aktualizacja statusu miejsc
         FOR i IN 1 .. p_ilosc_miejsc LOOP
-            -- Pobierz pierwsze dostêpne miejsce w rzêdzie
             SELECT MIN(m.numer)
             INTO v_miejsce
             FROM TABLE(
@@ -142,15 +140,14 @@ BEGIN
                 RAISE_APPLICATION_ERROR(-20007, 'Brak dostêpnych miejsc w wybranym rzêdzie.');
             END IF;
             
-            -- Dodanie biletu
+            -- Dodawanie bieletu
             INSERT INTO Bilet_table (bilet_id, cena, seans_ref, rzad, miejsce)
             VALUES (
                 bilet_seq.NEXTVAL, 25,
                 (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = v_repertuar_id),
                 p_rzad, v_miejsce
             );
-            
-                    -- Oznaczenie miejsca jako zajête
+            -- Zmienienie statusu na zajête dla miejsc
         UPDATE TABLE (
             SELECT s.miejsca FROM Sala_table s
             WHERE s.sala_id = v_sala_id
@@ -162,17 +159,14 @@ BEGIN
             WHERE r.repertuar_id = v_repertuar_id
             AND r.sala_ref.sala_id = v_sala_id
         );
-        
         END LOOP;
         EXCEPTION
     WHEN NO_DATA_FOUND THEN
         RAISE_APPLICATION_ERROR(-20004, 'Nie znaleziono filmu lub sali.');
     WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20005, 'Nieznany b³¹d: ' || SQLERRM);
+        RAISE_APPLICATION_ERROR(-20005, 'Nieznany blad: ' || SQLERRM);
     END ZarezerwujSeans;
     
-    
-
 
     PROCEDURE AnulujRezerwacje(
         p_tytul VARCHAR2,
@@ -185,7 +179,7 @@ BEGIN
         v_rezerwacja_id NUMBER;
         v_data_seansu DATE;
     BEGIN
-        -- Pobierz repertuar_id i sala_id na podstawie tytu³u filmu i daty seansu
+        -- Pobierz repertuar_id i id_sali
         SELECT r.repertuar_id, r.sala_ref.sala_id, r.data_rozpoczecia
         INTO v_repertuar_id, v_sala_id, v_data_seansu
         FROM Repertuar_table r
@@ -198,13 +192,12 @@ BEGIN
         RETURN;
     END IF;
     
-        -- Pobierz referencjê u¿ytkownika
         SELECT REF(u)
         INTO v_uzytkownik_ref
         FROM Uzytkownik_table u
         WHERE u.email = p_email;
     
-        -- Pobierz ID rezerwacji u¿ytkownika na dany seans
+        -- Pobierz id_rezerwacji uzytkownika
         SELECT r.rezerwacja_id
         INTO v_rezerwacja_id
         FROM Rezerwacja_table r
@@ -231,19 +224,19 @@ BEGIN
         v_uzytkownik_ref REF Uzytkownik;
         v_count NUMBER := 0;
     BEGIN
-        -- Pobierz referencjê u¿ytkownika
         SELECT REF(u)
         INTO v_uzytkownik_ref
         FROM Uzytkownik_table u
         WHERE u.email = p_email;
         
-            SELECT COUNT(*)
-    INTO v_count
-    FROM Rezerwacja_table r
-    WHERE r.uzytkownik_ref = v_uzytkownik_ref;
+        -- Sprawdzenie czy uzytkownik ma rezerwacje
+        SELECT COUNT(*)
+        INTO v_count
+        FROM Rezerwacja_table r
+        WHERE r.uzytkownik_ref = v_uzytkownik_ref;
     
     IF v_count = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla u¿ytkownika ' || p_email);
+        DBMS_OUTPUT.PUT_LINE('Brak rezerwacji dla uzytkownika ' || p_email);
         RETURN;
     END IF;
         
@@ -269,7 +262,6 @@ BEGIN
         SELECT f.tytul, 
                rep.data_rozpoczecia, 
                TO_CHAR(rep.data_rozpoczecia, 'HH24:MI') AS godzina_seansu,
-               -- Obliczamy liczbê dostêpnych miejsc poprawnie
                (SELECT COUNT(*) FROM TABLE(
                    SELECT s.miejsca FROM Sala_table s 
                    WHERE s.sala_id = rep.sala_ref.sala_id
@@ -281,9 +273,10 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE('Film: ' || r.tytul || 
                              ' | Data: ' || TO_CHAR(r.data_rozpoczecia, 'YYYY-MM-DD') || 
                              ' | Godzina: ' || r.godzina_seansu || 
-                             ' | Dostêpne miejsca: ' || r.dostepne_miejsca);
+                             ' | Dostepne miejsca: ' || r.dostepne_miejsca);
     END LOOP;
 END PokazSeanse;
+
 
 PROCEDURE ZmienTypKonta(
     p_email VARCHAR2,
@@ -291,26 +284,23 @@ PROCEDURE ZmienTypKonta(
 ) IS
     v_count NUMBER := 0;
 BEGIN
-    -- Sprawdzenie, czy u¿ytkownik istnieje
     SELECT COUNT(*) INTO v_count FROM Uzytkownik_table WHERE email = p_email;
     IF v_count = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('U¿ytkownik o podanym emailu nie istnieje.');
+        DBMS_OUTPUT.PUT_LINE('Uzytkownik o podanym emailu nie istnieje.');
         RETURN;
     END IF;
     
-    -- Sprawdzenie, czy podany typ konta jest poprawny
     IF p_typ_konta NOT IN ('standard', 'premium') THEN
-        DBMS_OUTPUT.PUT_LINE('Niepoprawny typ konta. Dozwolone wartoœci: standard, premium.');
+        DBMS_OUTPUT.PUT_LINE('Niepoprawny typ konta. Dozwolone wartosci: standard, premium.');
         RETURN;
     END IF;
     
-    -- Aktualizacja typu konta u¿ytkownika
     UPDATE Uzytkownik_table
     SET rola = p_typ_konta
     WHERE email = p_email;
     
     COMMIT;
-    DBMS_OUTPUT.PUT_LINE('Typ konta u¿ytkownika ' || p_email || ' zosta³ zmieniony na ' || p_typ_konta);
+    DBMS_OUTPUT.PUT_LINE('Typ konta u¿ytkownika ' || p_email || ' zostal zmieniony na ' || p_typ_konta);
 END ZmienTypKonta;
 
 END Klient_Pkg;
