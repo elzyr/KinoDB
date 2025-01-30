@@ -675,55 +675,42 @@ FOR EACH ROW
 WHEN (NEW.czy_anulowane = 1)
 DECLARE
     v_sala_id NUMBER;
-    v_rzad NUMBER;
-    v_numer NUMBER;
 BEGIN
-    -- Pobierz sala_id z powiπzanego repertuaru
-    SELECT r.sala_ref.sala_id
-    INTO v_sala_id
-    FROM Repertuar_table r
-    WHERE REF(r) = :NEW.repertuar_ref;
+    -- Pobranie ID sali z powiπzanego repertuaru
+    BEGIN
+        SELECT r.sala_ref.sala_id
+        INTO v_sala_id
+        FROM Repertuar_table r
+        WHERE REF(r) = :NEW.repertuar_ref;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('B≥πd: Nie znaleziono powiπzanej sali dla rezerwacji.');
+            RETURN;
+    END;
 
-    -- Iteruj po biletach i aktualizuj odpowiednie miejsca
+    -- Iteracja po biletach z rezerwacji
     FOR bilet_rec IN (
         SELECT b.rzad, b.miejsce
         FROM Bilet_table b
-        WHERE REF(b) IN (
-            SELECT COLUMN_VALUE 
+        WHERE b.bilet_id IN (
+            SELECT COLUMN_VALUE
             FROM TABLE(CAST(:OLD.bilety AS Bilety_Typ))
         )
     ) LOOP
-        -- Oznacz miejsce jako wolne w nested table
-        UPDATE TABLE(
-            SELECT s.miejsca 
-            FROM Sala_table s 
-            WHERE s.sala_id = v_sala_id
+        -- Aktualizacja statusu miejsc w Sala_table
+        UPDATE TABLE (
+            SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = v_sala_id
         ) m
         SET m.czy_zajete = 0
-        WHERE m.rzad = bilet_rec.rzad AND m.numer = bilet_rec.miejsce;
+        WHERE m.rzad = bilet_rec.rzad AND m.numer = bilet_rec.miejsce
+        AND EXISTS (
+            SELECT 1 FROM Sala_table s WHERE s.sala_id = v_sala_id
+        );
     END LOOP;
 END;
 /
 
 
--- Dodaj test triggera:
-DECLARE 
-    v_rezerwacja_id NUMBER;
-BEGIN
-    -- Znajd≈∫ ID istniejƒÖcej rezerwacji
-    SELECT MIN(rezerwacja_id) INTO v_rezerwacja_id 
-    FROM Rezerwacja_table;
-    
-    -- Anuluj rezerwacjƒô
-    UPDATE Rezerwacja_table
-    SET czy_anulowane = 1
-    WHERE rezerwacja_id = v_rezerwacja_id;
-    
-    -- Sprawd≈∫ czy miejsca zosta≈Çy zwolnione
-    COMMIT;
-    DBMS_OUTPUT.PUT_LINE('Rezerwacja ' || v_rezerwacja_id || ' zosta≈Ça anulowana.');
-END;
-/
 
 
         

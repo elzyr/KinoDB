@@ -111,7 +111,6 @@ AND EXISTS (
     
 
 
-
     PROCEDURE AnulujRezerwacje(
         p_tytul VARCHAR2,
         p_data_seansu DATE,
@@ -144,39 +143,16 @@ AND EXISTS (
         AND r.repertuar_ref = (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = v_repertuar_id)
         AND r.czy_anulowane = 0;
     
-        -- Zwolnienie miejsc na podstawie biletów z tej rezerwacji
-        FOR b IN (
-            SELECT b.bilet_id, b.rzad, b.miejsce
-            FROM Bilet_table b
-            WHERE b.seans_ref = (SELECT REF(r) FROM Repertuar_table r WHERE r.repertuar_id = v_repertuar_id)
-            AND REF(b) IN (
-                SELECT COLUMN_VALUE FROM TABLE(
-                    SELECT r.bilety FROM Rezerwacja_table r WHERE r.rezerwacja_id = v_rezerwacja_id
-                )
-            )
-        ) LOOP
-            -- Oznaczenie miejsca jako dostêpne
-            UPDATE TABLE(
-                SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = v_sala_id
-            ) m
-            SET m.czy_zajete = 0
-            WHERE m.rzad = b.rzad AND m.numer = b.miejsce;
-    
-            -- Usuniêcie biletu
-            DELETE FROM Bilet_table WHERE bilet_id = b.bilet_id;
-        END LOOP;
-    
         -- Anulowanie rezerwacji dla u¿ytkownika
         UPDATE Rezerwacja_table
         SET czy_anulowane = 1
         WHERE rezerwacja_id = v_rezerwacja_id;
     
         COMMIT;
-        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana i miejsca zwolnione.');
+        DBMS_OUTPUT.PUT_LINE('Rezerwacja anulowana. Zwolnienie miejsc obs³u¿y wyzwalacz.');
     EXCEPTION
     WHEN OTHERS THEN
         ROLLBACK;
-        DBMS_OUTPUT.PUT_LINE('B³¹d podczas anulowania rezerwacji: ' || SQLERRM);
     END AnulujRezerwacje;
 
 
