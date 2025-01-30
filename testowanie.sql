@@ -246,13 +246,7 @@ BEGIN
 END;
 /
 
-SELECT r.rezerwacja_id,
-       f.tytul,
-       b.rzad,
-       b.miejsce
-FROM Rezerwacja_table r
-JOIN Repertuar_table rep ON REF(rep) = r.repertuar_ref
-JOIN Film_table f ON REF(f) = rep.film_ref
-JOIN TABLE(r.bilety) b_ref ON 1=1
-JOIN Bilet_table b ON b.bilet_id = CAST(b_ref AS NUMBER)
-WHERE r.uzytkownik_ref = (SELECT REF(u) FROM Uzytkownik_table u WHERE u.email = 'jan@test.pl');
+begin
+    Klient_Pkg.Pokaz_Rezerwacje('jan@test.pl');
+
+end;
