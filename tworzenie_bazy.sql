@@ -410,6 +410,7 @@ CREATE OR REPLACE TYPE Bilet AS OBJECT (
     seans_ref REF Repertuar,
     rzad NUMBER,
     miejsce NUMBER,
+    MEMBER FUNCTION data_seansu RETURN DATE
 );
 /
 
@@ -567,6 +568,21 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
     END data_zakonczenia;
 END;
 /
+
+CREATE OR REPLACE TYPE BODY Bilet AS
+    MEMBER FUNCTION data_seansu RETURN DATE IS
+        v_data DATE;
+    BEGIN
+        SELECT r.data_rozpoczecia 
+          INTO v_data
+          FROM Repertuar_table r
+         WHERE REF(r) = seans_ref;
+
+        RETURN v_data;
+    END data_seansu;
+END;
+/
+
 
 -- -------------------------------
 -- Sekcja: Tworzenie wyzwalaczy
