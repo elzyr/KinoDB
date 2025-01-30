@@ -61,7 +61,7 @@ END;
 /
 
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 4: Przekroczenie liczby miejsc w sali');
+    DBMS_OUTPUT.PUT_LINE('Test 5: Przekroczenie liczby miejsc w sali');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 51);
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
 EXCEPTION
@@ -71,7 +71,7 @@ END;
 /
 
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 5: Rezerwacja 5 miejsc w rzedzie 3');
+    DBMS_OUTPUT.PUT_LINE('Test 6: Rezerwacja 5 miejsc w rzedzie 3');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'Kraina Lodu', TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 5);
     -- Sprawdz czy miejsca sa ciagle (np. 1-5)
     FOR r IN (
@@ -91,7 +91,7 @@ END;
 /
 
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 6: Brak miejsc w preferowanym rzedzie');
+    DBMS_OUTPUT.PUT_LINE('Test 7: Brak miejsc w preferowanym rzedzie');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 11); -- Rzad 1 ma 10 miejsc
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
 EXCEPTION
@@ -101,7 +101,7 @@ END;
 /
 
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 7: Anulowanie na godzinê przed seansem');
+    DBMS_OUTPUT.PUT_LINE('Test 8: Anulowanie na godzinê przed seansem');
     DECLARE
         v_seans_time DATE;
     BEGIN
@@ -121,7 +121,7 @@ END;
 
     
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 8: Sprawdzenie znizki 10% dla premium');
+    DBMS_OUTPUT.PUT_LINE('Test 9: Sprawdzenie znizki 10% dla premium');
     
     Klient_Pkg.Zarezerwuj_Seans('anna@test.pl', 'Kraina Lodu', TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 2);
     
@@ -145,7 +145,7 @@ END;
 /
     
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 9: Podwojna rezerwacja tego samego miejsca');
+    DBMS_OUTPUT.PUT_LINE('Test 10: Podwojna rezerwacja tego samego miejsca');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 1);
     Klient_Pkg.Zarezerwuj_Seans('anna@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 1);
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
@@ -156,7 +156,7 @@ END;
 /
     
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 10: Rezerwacja filmu 18+ przez 15-latka');
+    DBMS_OUTPUT.PUT_LINE('Test 11: Rezerwacja filmu 18+ przez 15-latka');
     Klient_Pkg.Zarezerwuj_Seans('anna@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 1);
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
 EXCEPTION
@@ -166,7 +166,7 @@ END;
 /
     
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 11: Zmiana konta na premium');
+    DBMS_OUTPUT.PUT_LINE('Test 12: Zmiana konta na premium');
     Klient_Pkg.Zmien_Typ_Konta('jan@test.pl', 'premium');
     
     -- Sprawdz, czy typ konta zostal zmieniony
@@ -209,7 +209,7 @@ END;
 /
 
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 20: Dodanie kategorii z istniejaca nazwa "Horror"');
+    DBMS_OUTPUT.PUT_LINE('Test 15: Dodanie kategorii z istniejaca nazwa "Horror"');
     Admin_Pkg.dodaj_kategorie('Horror');
     DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu przy dodawaniu istniejacej kategorii.');
 EXCEPTION
@@ -220,7 +220,7 @@ END;
 
 
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Test 15: Sprawdzenie popularnosci filmu "Kraina Lodu"');
+    DBMS_OUTPUT.PUT_LINE('Test 16: Sprawdzenie popularnosci filmu "Kraina Lodu"');
 
     BEGIN
         Admin_Pkg.dodaj_seans(

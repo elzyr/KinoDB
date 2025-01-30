@@ -55,7 +55,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
         -- Sprawdzenie wieku
         IF wiek_uzytkownika < wymagany_wiek_filmu THEN
-            RAISE_APPLICATION_ERROR(-20008, 'U¿ytkownik nie spe³nia wymaganego wieku dla tego filmu.');
+            RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie spelnia wymaganego wieku dla tego filmu.');
         END IF;
     END Sprawdz_Wiek;
 
@@ -71,26 +71,26 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         id_sali NUMBER;
         id_seansu NUMBER;
         ref_uzytkownika REF Uzytkownik;
-        ref_repertuar REF Repertuar; -- Dodana zmienna dla REF
+        ref_repertuar REF Repertuar;
         bilety_kolekcja Bilety_Typ := Bilety_Typ();
         rabat NUMBER := 1.0;
         typ_konta VARCHAR2(20);
         
-        current_bilet_id NUMBER := 0; -- Zmienna do œledzenia bilet_id
+        current_bilet_id NUMBER := 0;
     BEGIN
         -- Sprawdzenie wieku
         Sprawdz_Wiek(email_uzytkownika, tytul_filmu);
 
-        -- Sprawdzenie rabatu
+       
         BEGIN
             SELECT rola INTO typ_konta
             FROM Uzytkownik_table
             WHERE email = email_uzytkownika;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20009, 'U¿ytkownik nie istnieje.');
+                RAISE_APPLICATION_ERROR(-20009, 'Uzytkownik nie istnieje.');
         END;
-
+ -- Sprawdzenie rabatu
         IF typ_konta = 'premium' THEN
             rabat := 0.9;
         END IF;
@@ -104,7 +104,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             WHERE f.tytul = tytul_filmu
             AND r.data_rozpoczecia = data_seansu_in;
             
-            -- Pobierz REF do repertuaru
+            -- Pobranie ref do repertuaru
             SELECT REF(r) INTO ref_repertuar 
             FROM Repertuar_table r 
             WHERE r.repertuar_id = id_seansu;
@@ -114,7 +114,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                 RAISE_APPLICATION_ERROR(-20010, 'Nie znaleziono seansu.');
         END;
 
-        -- Inicjalizacja current_bilet_id
+
         SELECT NVL(MAX(b.bilet_id), 0) INTO current_bilet_id
         FROM Rezerwacja_table r
         CROSS JOIN TABLE(r.bilety) b
@@ -125,7 +125,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             DECLARE
                 miejsce_rec Miejsce;
             BEGIN
-                -- ZnajdŸ wolne miejsce
+                -- Znajdz wolne miejsce
                 BEGIN
                     SELECT VALUE(m) INTO miejsce_rec
                     FROM TABLE(
@@ -140,20 +140,19 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
                         RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc w wybranym rzêdzie.');
                 END;
 
-                -- Inkrementacja bilet_id
                 current_bilet_id := current_bilet_id + 1;
 
-                -- Dodaj bilet do kolekcji
+                -- Dodanie biletu do nested table
                 bilety_kolekcja.EXTEND;
                 bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
-                    current_bilet_id, -- Rêcznie przypisany bilet_id
+                    current_bilet_id,
                     25 * rabat,
-                    ref_repertuar, -- U¿yj zmiennej zamiast SELECT
+                    ref_repertuar, 
                     preferencja_rzedu,
                     miejsce_rec.numer
                 );
 
-                -- Zaznacz miejsce jako zajête
+                -- Zaznacz miejsce jako zajete
                 UPDATE TABLE(
                     SELECT s.miejsca FROM Sala_table s
                     WHERE s.sala_id = id_sali
@@ -164,25 +163,25 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             END;
         END LOOP;
 
-        -- Pobierz REF do u¿ytkownika
+        -- Pobierz REF do uzytkownika
         SELECT REF(u) INTO ref_uzytkownika
         FROM Uzytkownik_table u
         WHERE u.email = email_uzytkownika;
 
-        -- Utwórz rezerwacjê
+        -- Utwórz rezerwacje
         INSERT INTO Rezerwacja_table VALUES (
             rezerwacja_seq.NEXTVAL,
             SYSDATE,
             25 * ilosc_miejsc_do_zarezerwowania * rabat,
             0,
-            ref_repertuar, -- U¿yj zmiennej
-            ref_uzytkownika, -- U¿yj zmiennej
+            ref_repertuar, 
+            ref_uzytkownika, 
             bilety_kolekcja
         );
 
     EXCEPTION
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20012, 'B³¹d rezerwacji: ' || SQLERRM);
+            RAISE_APPLICATION_ERROR(-20012, 'Blad rezerwacji: ' || SQLERRM);
     END Zarezerwuj_Seans;
 
 
@@ -193,7 +192,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
     ) IS
         id_seansu NUMBER;
         id_rezerwacji NUMBER;
-        data_rozpoczecia_seansu DATE; -- Dodana zmienna
+        data_rozpoczecia_seansu DATE;
     BEGIN
         -- Pobranie ID seansu
         SELECT r.repertuar_id INTO id_seansu
@@ -202,14 +201,14 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         WHERE f.tytul = tytul_filmu
         AND r.data_rozpoczecia = data_seansu_in;
 
-        -- Pobranie daty rozpoczêcia seansu
+        -- Pobranie daty rozpoczecia seansu
         SELECT data_rozpoczecia INTO data_rozpoczecia_seansu
         FROM Repertuar_table
         WHERE repertuar_id = id_seansu;
 
-        -- Sprawdzenie, czy anulacja jest mo¿liwa
-        IF SYSDATE > data_rozpoczecia_seansu - INTERVAL '1' HOUR THEN
-            RAISE_APPLICATION_ERROR(-20006, 'Zbyt póŸna anulacja!');
+
+        IF SYSDATE > data_rozpoczecia_seansu - (1/24) THEN
+            RAISE_APPLICATION_ERROR(-20006, 'Nie mozna anulowaæ rezerwacji mniej niz godzine przed rozpoczeciem!');
         END IF;
 
         -- Pobranie ID rezerwacji
@@ -244,7 +243,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             SELECT 
                 r.rezerwacja_id, 
                 f.tytul, 
-                rep.data_rozpoczecia AS data_seansu, -- Dodanie daty seansu
+                rep.data_rozpoczecia AS data_seansu,
                 r.cena_laczna, 
                 r.bilety
             FROM Rezerwacja_table r
@@ -259,13 +258,13 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         FOR rezerwacja IN c_rezerwacje LOOP
             DBMS_OUTPUT.PUT_LINE('Rezerwacja ID: ' || rezerwacja.rezerwacja_id);
             DBMS_OUTPUT.PUT_LINE('Film: ' || rezerwacja.tytul);
-            DBMS_OUTPUT.PUT_LINE('Data seansu: ' || TO_CHAR(rezerwacja.data_seansu, 'DD-MM-YYYY HH24:MI')); -- Zmiana z data_rezerwacji na data_seansu
+            DBMS_OUTPUT.PUT_LINE('Data seansu: ' || TO_CHAR(rezerwacja.data_seansu, 'DD-MM-YYYY HH24:MI')); 
             
             FOR bilet IN (SELECT * FROM TABLE(rezerwacja.bilety)) LOOP
-                DBMS_OUTPUT.PUT_LINE('-> Miejsce: Rz¹d ' || bilet.rzad || ', Numer ' || bilet.miejsce);
+                DBMS_OUTPUT.PUT_LINE('-> Miejsce: Rzad ' || bilet.rzad || ', Numer ' || bilet.miejsce);
             END LOOP;
             
-            DBMS_OUTPUT.PUT_LINE('Cena ³¹czna: ' || rezerwacja.cena_laczna || ' PLN');
+            DBMS_OUTPUT.PUT_LINE('Cena laczna: ' || rezerwacja.cena_laczna || ' PLN');
             DBMS_OUTPUT.PUT_LINE('-------------------------------------------');
         END LOOP;
     END Pokaz_Rezerwacje;
@@ -303,7 +302,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         WHERE email = email_uzytkownika;
 
         IF SQL%ROWCOUNT = 0 THEN
-            RAISE_APPLICATION_ERROR(-20008, 'U¿ytkownik nie istnieje!');
+            RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie istnieje!');
         END IF;
     END Zmien_Typ_Konta;
 
