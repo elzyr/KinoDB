@@ -1,5 +1,4 @@
 BEGIN
-    -- Usuwanie tabel w odpowiedniej kolejnoœci
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Rezerwacja_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Repertuar_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Sala_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
@@ -15,7 +14,6 @@ BEGIN
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE repertuar_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE rezerwacja_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
 
-    -- Usuwanie typów z FORCE
     BEGIN EXECUTE IMMEDIATE 'DROP TYPE Rezerwacja FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TYPE Bilety_Typ FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TYPE Bilet FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
@@ -137,19 +135,23 @@ CREATE TABLE Uzytkownik_table OF Uzytkownik (
 CREATE TABLE Film_table OF Film (
     PRIMARY KEY (film_id),
     CONSTRAINT film_czas_trwania_ck CHECK (czas_trwania > 0),
-    CONSTRAINT film_minimalny_wiek_ck CHECK (minimalny_wiek BETWEEN 0 AND 18)
+    CONSTRAINT film_minimalny_wiek_ck CHECK (minimalny_wiek BETWEEN 0 AND 18),
+    SCOPE FOR (kategoria_ref) IS Kategoria_table 
 );
 /
 
 CREATE TABLE Repertuar_table OF Repertuar (
-    PRIMARY KEY (repertuar_id)
+    PRIMARY KEY (repertuar_id),
+    SCOPE FOR (film_ref) IS Film_table,          
+    SCOPE FOR (sala_ref) IS Sala_table           
 );
 /
-
 CREATE TABLE Rezerwacja_table OF Rezerwacja (
     PRIMARY KEY (rezerwacja_id),
     CONSTRAINT rezerwacja_cena_laczna_ck CHECK (cena_laczna > 0),
-    CONSTRAINT rezerwacja_czy_anulowane_ck CHECK (czy_anulowane IN (0, 1))
+    CONSTRAINT rezerwacja_czy_anulowane_ck CHECK (czy_anulowane IN (0, 1)),
+    SCOPE FOR (repertuar_ref) IS Repertuar_table, 
+    SCOPE FOR (uzytkownik_ref) IS Uzytkownik_table 
 ) NESTED TABLE bilety STORE AS bilety_nt;
 /
 
@@ -202,7 +204,7 @@ BEGIN
 END;
 /
 
--- Cia³a typów
+
 CREATE OR REPLACE TYPE BODY Repertuar AS
     MEMBER FUNCTION data_zakonczenia RETURN DATE IS
         czas_trwania NUMBER;
@@ -216,7 +218,6 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
 END;
 /
 
--- Przyk³adowy trigger do zwalniania miejsc
 CREATE OR REPLACE TRIGGER release_seat_on_cancel
 AFTER UPDATE OF czy_anulowane ON Rezerwacja_table
 FOR EACH ROW
