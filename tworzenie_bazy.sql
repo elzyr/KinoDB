@@ -225,11 +225,11 @@ WHEN (NEW.czy_anulowane = 1)
 DECLARE
     sala_id NUMBER;
 BEGIN
-    -- Pobierz ID sali
+    -- pobieranie id sali
     SELECT DEREF(:NEW.repertuar_ref).sala_ref.sala_id INTO sala_id
     FROM DUAL;
 
-    -- Zwolnij miejsca
+    -- Zwolnienie miejsc
     FOR bilet IN (SELECT b.rzad, b.miejsce FROM TABLE(:OLD.bilety) b) 
     LOOP
         UPDATE TABLE(SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = sala_id) m
