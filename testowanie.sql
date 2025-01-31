@@ -1,25 +1,51 @@
 BEGIN
-    -- Dodaj kategorie
     Admin_Pkg.dodaj_kategorie('Horror');
     Admin_Pkg.dodaj_kategorie('Familijny');
 
-    -- Dodaj sale
     Admin_Pkg.dodaj_sale('Sala 1', 5, 10);
     Admin_Pkg.dodaj_sale('Sala 2', 3, 8);
 
-    -- Dodaj filmy
     Admin_Pkg.dodaj_film('The Conjuring', 120, 18, 1);
     Admin_Pkg.dodaj_film('Kraina Lodu', 90, 0, 2); 
 
-    -- Dodaj seanse
     Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'));
     Admin_Pkg.dodaj_seans(2, 2, TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 
-    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(NULL, 'Jan', 'Kowalski', 20, 'jan@test.pl', 'standard'));
-    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(NULL, 'Anna', 'Nowak', 16, 'anna@test.pl', 'premium'));
-    INSERT INTO Uzytkownik_table VALUES (Uzytkownik(NULL, 'Zbigniew', 'Szczupak', 25, 'zbigniew@test.pl', 'premium'));
+    INSERT INTO Uzytkownik_table VALUES (
+        Uzytkownik(
+            NULL, 
+            'Jan', 
+            'Kowalski', 
+            TO_DATE('2005-01-31', 'YYYY-MM-DD'),
+            'jan@test.pl', 
+            'standard'
+        )
+    );
+
+    INSERT INTO Uzytkownik_table VALUES (
+        Uzytkownik(
+            NULL, 
+            'Anna', 
+            'Nowak', 
+            TO_DATE('2009-01-31', 'YYYY-MM-DD'),
+            'anna@test.pl', 
+            'premium'
+        )
+    );
+
+    INSERT INTO Uzytkownik_table VALUES (
+        Uzytkownik(
+            NULL, 
+            'Zbigniew', 
+            'Szczupak', 
+            TO_DATE('2000-01-31', 'YYYY-MM-DD'), 
+            'zbigniew@test.pl', 
+            'premium'
+        )
+    );
 END;
 /
+
 
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 1: Proba dodania dwoch filmow na te sama sale w tym samym czasie');
@@ -30,7 +56,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 2: Przerwa krotsza niz 30 minut miedzy seansami');
     Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 12:10:00', 'YYYY-MM-DD HH24:MI:SS'));
@@ -40,7 +66,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 3: Seans przed 7:00');
     Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 06:00:00', 'YYYY-MM-DD HH24:MI:SS'));
@@ -50,7 +76,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 4: Seans po 22:00');
     Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 22:01:00', 'YYYY-MM-DD HH24:MI:SS'));
@@ -60,7 +86,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 5: Przekroczenie liczby miejsc w sali');
     Klient_Pkg.Zarezerwuj_Seans('zbigniew@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 2, 10);
@@ -81,18 +107,18 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 6: Rezerwacja 5 miejsc w rzedzie 3');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'Kraina Lodu', TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'), 3, 5);
-    klient_pkg.pokaz_rezerwacje('jan@test.pl');
+    Klient_Pkg.Pokaz_Rezerwacje('jan@test.pl');
     DBMS_OUTPUT.PUT_LINE('TEST UDANY: Miejsca zarezerwowane w rzedzie');
 EXCEPTION
     WHEN OTHERS THEN
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 7: Brak miejsc w preferowanym rzedzie');
     Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'), 1, 11); -- Rzad 1 ma 10 miejsc
@@ -102,7 +128,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 8: Anulowanie na godzinê przed seansem');
     DECLARE
@@ -121,8 +147,7 @@ BEGIN
     END;
 END;
 /
-
-    
+        
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 9: Sprawdzenie znizki 10% dla premium');
     
@@ -200,7 +225,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 14: Pokazanie seansow na dzien 2026-01-02');
     Klient_Pkg.Pokaz_Seanse(TO_DATE('2026-01-02', 'YYYY-MM-DD'));
@@ -210,7 +235,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: ' || SQLERRM);
 END;
 /
-
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 15: Dodanie kategorii z istniejaca nazwa "Horror"');
     Admin_Pkg.dodaj_kategorie('Horror');
@@ -220,8 +245,8 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
-
-
+    
+    
 BEGIN
     DBMS_OUTPUT.PUT_LINE('Test 16: Sprawdzenie popularnosci filmu "Kraina Lodu"');
 
@@ -248,4 +273,3 @@ BEGIN
     END;
 END;
 /
-

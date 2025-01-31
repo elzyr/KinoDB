@@ -34,30 +34,35 @@ CREATE OR REPLACE PACKAGE Klient_Pkg AS
 
 END Klient_Pkg;
 /
+
+
 CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
+    -- Procedura do sprawdzania wieku uzytkownika wzgledem minimalnego wieku filmu
     PROCEDURE Sprawdz_Wiek(
         email_uzytkownika VARCHAR2,
         tytul_filmu VARCHAR2
     ) IS
+        data_urodzenia_uzytkownika DATE;
         wiek_uzytkownika NUMBER;
         wymagany_wiek_filmu NUMBER;
     BEGIN
-        SELECT u.wiek INTO wiek_uzytkownika
+        SELECT u.data_urodzenia INTO data_urodzenia_uzytkownika
         FROM Uzytkownik_table u
         WHERE u.email = email_uzytkownika;
 
-        -- Pobranie minimalnego wieku dla filmu
+        wiek_uzytkownika := TRUNC(MONTHS_BETWEEN(SYSDATE, data_urodzenia_uzytkownika) / 12);
+
         SELECT f.minimalny_wiek INTO wymagany_wiek_filmu
         FROM Film_table f
         WHERE f.tytul = tytul_filmu;
 
-        -- Sprawdzenie wieku
         IF wiek_uzytkownika < wymagany_wiek_filmu THEN
             RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie spelnia wymaganego wieku dla tego filmu.');
         END IF;
     END Sprawdz_Wiek;
 
+    -- Procedura do rezerwacji seansu
     PROCEDURE Zarezerwuj_Seans(
         email_uzytkownika VARCHAR2,
         tytul_filmu VARCHAR2,
@@ -101,7 +106,6 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             WHERE f.tytul = tytul_filmu
             AND r.data_rozpoczecia = data_seansu_in;
             
-            -- Pobranie ref do repertuaru
             SELECT REF(r) INTO ref_repertuar 
             FROM Repertuar_table r 
             WHERE r.repertuar_id = id_seansu;
@@ -132,7 +136,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
                 current_bilet_id := current_bilet_id + 1;
 
-                -- Dodanie biletu do nested table
+                -- Dodanie biletu do kolekcji
                 bilety_kolekcja.EXTEND;
                 bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
                     current_bilet_id,        
@@ -157,6 +161,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         FROM Uzytkownik_table u
         WHERE u.email = email_uzytkownika;
 
+        -- Wstawienie rezerwacji
         INSERT INTO Rezerwacja_table VALUES (
             rezerwacja_seq.NEXTVAL,
             SYSDATE,
@@ -172,7 +177,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             RAISE_APPLICATION_ERROR(-20012, 'Blad rezerwacji: ' || SQLERRM);
     END Zarezerwuj_Seans;
 
-
+    -- Procedura do anulowania rezerwacji
     PROCEDURE Anuluj_Rezerwacje(
         tytul_filmu VARCHAR2,
         data_seansu_in DATE,
@@ -194,7 +199,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         FROM Repertuar_table
         WHERE repertuar_id = id_seansu;
 
-
+        -- Sprawdzenie terminu anulowania
         IF SYSDATE > data_rozpoczecia_seansu - (1/24) THEN
             RAISE_APPLICATION_ERROR(-20006, 'Nie mozna anulowac rezerwacji mniej niz godzine przed rozpoczeciem!');
         END IF;
@@ -224,6 +229,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
             RAISE_APPLICATION_ERROR(-20001, 'Brak aktywnych rezerwacji!');
     END Anuluj_Rezerwacje;
 
+    -- Procedura do wyswietlania rezerwacji uzytkownika
     PROCEDURE Pokaz_Rezerwacje(
         email_uzytkownika VARCHAR2
     ) IS
@@ -257,6 +263,8 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         END LOOP;
     END Pokaz_Rezerwacje;
 
+
+    -- Procedura do wyswietlania seansow w okreslonym dniu
     PROCEDURE Pokaz_Seanse(
         data_seansu_in DATE
     ) IS
@@ -276,6 +284,8 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         END LOOP;
     END Pokaz_Seanse;
 
+
+    -- Procedura do zmiany typu konta uzytkownika
     PROCEDURE Zmien_Typ_Konta(
         email_uzytkownika VARCHAR2,
         nowy_typ_konta VARCHAR2

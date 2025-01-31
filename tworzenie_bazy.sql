@@ -65,11 +65,12 @@ CREATE OR REPLACE TYPE Uzytkownik AS OBJECT (
     user_id NUMBER,
     imie VARCHAR2(50),
     nazwisko VARCHAR2(50),
-    wiek NUMBER,
+    data_urodzenia DATE,
     email VARCHAR2(100),
     rola VARCHAR2(50)
 );
 /
+
 
 CREATE OR REPLACE TYPE Film AS OBJECT (
     film_id NUMBER,
@@ -127,7 +128,6 @@ CREATE TABLE Sala_table OF Sala (
 CREATE TABLE Uzytkownik_table OF Uzytkownik (
     PRIMARY KEY (user_id),
     CONSTRAINT uzytkownik_email_unique UNIQUE(email),
-    CONSTRAINT uzytkownik_wiek_ck CHECK (wiek > 15),
     CONSTRAINT uzytkownik_rola_ck CHECK (rola IN ('standard','premium'))
 );
 /
@@ -156,6 +156,17 @@ CREATE TABLE Rezerwacja_table OF Rezerwacja (
 /
 
 -- Triggery
+CREATE OR REPLACE TRIGGER trg_uzytkownik_age
+BEFORE INSERT OR UPDATE ON Uzytkownik_table
+FOR EACH ROW
+BEGIN
+    IF :NEW.data_urodzenia > ADD_MONTHS(SYSDATE, -12*15) THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Uzytkownik musi miec co najmniej 15 lat.');
+    END IF;
+END;
+/
+
+
 CREATE OR REPLACE TRIGGER trg_kategoria_id
 BEFORE INSERT ON Kategoria_table
 FOR EACH ROW
