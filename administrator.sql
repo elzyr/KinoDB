@@ -185,52 +185,73 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             RAISE_APPLICATION_ERROR(-20011, 'Wystapil blad podczas dodawania kategorii: ' || SQLERRM);
     END dodaj_kategorie;
 
+
     PROCEDURE popularnosc_filmu(
         tytul_filmu IN VARCHAR2
     ) IS
-        id_filmu NUMBER;
         referencja_filmu REF Film;
-        wszystkie_miejsca NUMBER := 0;
-        sprzedane_bilety NUMBER := 0;
+        wszystkie_miejsca NUMBER;
+        sprzedane_bilety NUMBER;
         procent_sprzedazy NUMBER;
+        l_liczba_tygodni NUMBER := 0;
+        
+        CURSOR c_weeks IS
+            SELECT DISTINCT TRUNC(r.data_rozpoczecia, 'IW') AS week_start
+            FROM Repertuar_table r
+            WHERE r.film_ref = referencja_filmu
+            ORDER BY week_start;
     BEGIN
-        -- Pobranie ID filmu
-        SELECT film_id
-        INTO id_filmu
-        FROM Film_table
-        WHERE tytul = tytul_filmu;
-
         -- Pobranie referencji do filmu
         SELECT REF(f)
         INTO referencja_filmu
         FROM Film_table f
-        WHERE f.film_id = id_filmu;
+        WHERE f.tytul = tytul_filmu;
 
-        -- Liczenie wszystkich miejsc na seansach danego filmu w ciagu ostatnich 7 dni
-        SELECT COUNT(*)
-        INTO wszystkie_miejsca
-        FROM Repertuar_table r
-        JOIN Sala_table s ON r.sala_ref = REF(s)
-        CROSS JOIN TABLE(s.miejsca) m
-        WHERE r.film_ref = referencja_filmu
-          AND r.data_rozpoczecia >= SYSDATE - 7;
+        DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '"');
 
-        -- Liczenie sprzedanych biletow na seansach danego filmu w ciagu ostatnich 7 dni
-        SELECT COUNT(*)
-        INTO sprzedane_bilety
-        FROM Rezerwacja_table r
-        JOIN Repertuar_table rep ON r.repertuar_ref = REF(rep)
-        CROSS JOIN TABLE(r.bilety) b
-        WHERE rep.film_ref = referencja_filmu
-          AND rep.data_rozpoczecia >= SYSDATE - 7
-          AND r.czy_anulowane = 0;
+        -- Przetwarzanie ka¿dego tygodnia
+        FOR week_rec IN c_weeks LOOP
+            l_liczba_tygodni := l_liczba_tygodni + 1;
+            
+            -- Obliczanie wszystkich miejsc w tygodniu
+            SELECT COUNT(*)
+            INTO wszystkie_miejsca
+            FROM Repertuar_table r
+            JOIN Sala_table s ON r.sala_ref = REF(s)
+            CROSS JOIN TABLE(s.miejsca) m
+            WHERE r.film_ref = referencja_filmu
+              AND TRUNC(r.data_rozpoczecia, 'IW') = week_rec.week_start;
 
-        IF wszystkie_miejsca > 0 THEN
-            procent_sprzedazy := (sprzedane_bilety / wszystkie_miejsca) * 100;
-        ELSE
-            procent_sprzedazy := 0;
+            -- Obliczanie sprzedanych biletów w tygodniu
+            SELECT COUNT(*)
+            INTO sprzedane_bilety
+            FROM Rezerwacja_table rez
+            JOIN Repertuar_table r ON rez.repertuar_ref = REF(r)
+            CROSS JOIN TABLE(rez.bilety) b
+            WHERE r.film_ref = referencja_filmu
+              AND TRUNC(r.data_rozpoczecia, 'IW') = week_rec.week_start
+              AND rez.czy_anulowane = 0;
+
+            -- Obliczanie procentowego zapelnienia
+            IF wszystkie_miejsca > 0 THEN
+                procent_sprzedazy := (sprzedane_bilety / wszystkie_miejsca) * 100;
+            ELSE
+                procent_sprzedazy := 0;
+            END IF;
+
+            -- Wypisanie wyniku
+            DBMS_OUTPUT.PUT_LINE(
+                TO_CHAR(week_rec.week_start, 'YYYY-MM-DD') || 
+                ' : ' || 
+                ROUND(procent_sprzedazy, 2) || 
+                '% zapelnienia'
+            );
+        END LOOP;
+
+        -- Komunikat gdy brak seansów
+        IF l_liczba_tygodni = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Brak seansow dla tego filmu.');
         END IF;
-        DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '" w ciagu ostatnich 7 dni byl zapelniony w: ' || ROUND(procent_sprzedazy, 2) || '%');
 
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
@@ -238,7 +259,6 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20013, 'Wystapil blad podczas obliczania popularnosci: ' || SQLERRM);
     END popularnosc_filmu;
-
 
     PROCEDURE wycofaj_film(
         tytul_filmu IN VARCHAR2
