@@ -21,6 +21,11 @@ CREATE OR REPLACE PACKAGE Admin_Pkg AS
     PROCEDURE popularnosc_filmu(
         tytul_filmu IN VARCHAR2
     );
+    
+    PROCEDURE wycofaj_film(
+        tytul_filmu IN VARCHAR2
+    );
+
 END Admin_Pkg;
 /
 CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
@@ -43,12 +48,14 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             tytul,
             czas_trwania,
             minimalny_wiek,
-            kategoria_ref
+            kategoria_ref,
+            czy_wycofany
         ) VALUES (
             tytul_filmu,
             czas_trwania_filmu,
             wiek_minimalny,
-            referencja_kategorii
+            referencja_kategorii,
+            0
         );
         EXCEPTION
             WHEN DUP_VAL_ON_INDEX THEN
@@ -59,7 +66,7 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
                 RAISE_APPLICATION_ERROR(-20001, 'Wystapil blad podczas dodawania filmu.');
     END dodaj_film;
 
-    PROCEDURE dodaj_seans(
+        PROCEDURE dodaj_seans(
         id_filmu IN NUMBER,
         id_sali IN NUMBER,
         data_rozpoczecia_filmu IN DATE
@@ -67,9 +74,20 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         referencja_filmu REF Film;
         referencja_sali REF Sala;
         czy_juz_jest_seans NUMBER;
+        czy_film_wycofany NUMBER;
         nowy_seans Repertuar;
         data_zakonczenia_filmu DATE;
     BEGIN
+        -- Sprawdzenie, czy film jest wycofany
+        SELECT czy_wycofany
+        INTO czy_film_wycofany
+        FROM Film_table
+        WHERE film_id = id_filmu;
+
+        IF czy_film_wycofany = 1 THEN
+            RAISE_APPLICATION_ERROR(-20016, 'Film zostal wycofany i nie mozna go dodac do repertuaru.');
+        END IF;
+
         -- Pobranie referencji do filmu
         SELECT REF(f)
         INTO referencja_filmu
@@ -220,6 +238,29 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20013, 'Wystapil blad podczas obliczania popularnosci: ' || SQLERRM);
     END popularnosc_filmu;
+
+
+    PROCEDURE wycofaj_film(
+        tytul_filmu IN VARCHAR2
+    ) IS
+        id_filmu NUMBER;
+    BEGIN
+        SELECT film_id
+        INTO id_filmu
+        FROM Film_table
+        WHERE tytul = tytul_filmu;
+        
+        UPDATE Film_table
+        SET czy_wycofany = 1
+        WHERE film_id = id_filmu;
+
+        DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '" zostal wycofany.');
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20014, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
+            WHEN OTHERS THEN
+                RAISE_APPLICATION_ERROR(-20015, 'Wystapil blad podczas wycofywania filmu: ' || SQLERRM);
+    END wycofaj_film;
 
 END Admin_Pkg;
 /

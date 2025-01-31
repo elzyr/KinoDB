@@ -77,7 +77,8 @@ CREATE OR REPLACE TYPE Film AS OBJECT (
     tytul VARCHAR2(200),
     czas_trwania NUMBER,
     minimalny_wiek NUMBER,
-    kategoria_ref REF Kategoria
+    kategoria_ref REF Kategoria,
+    czy_wycofany NUMBER
 );
 /
 

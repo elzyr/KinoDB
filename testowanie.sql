@@ -273,3 +273,19 @@ BEGIN
     END;
 END;
 /
+
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Test 17: Próba dodania seansu dla wycofanego filmu');
+    
+    -- Wycofujemy film "The Conjuring"
+    Admin_Pkg.wycofaj_film('The Conjuring');
+
+    -- Próba dodania seansu dla wycofanego filmu
+    Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-03 15:00:00', 'YYYY-MM-DD HH24:MI:SS'));
+
+    DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Seans dla wycofanego filmu zostal dodany.');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
+END;
+/
