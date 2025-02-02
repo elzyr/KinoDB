@@ -137,7 +137,7 @@ BEGIN
         v_seans_time := SYSDATE + 30/1440; -- 30 minut od teraz
         
         Admin_Pkg.dodaj_seans(1, 1, v_seans_time);
-        Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', v_seans_time, 2, 2);
+        Klient_Pkg.Zarezerwuj_Seans('jan@test.pl', 'The Conjuring', v_seans_time, 5, 2);
         Klient_Pkg.Anuluj_Rezerwacje('The Conjuring', v_seans_time, 'jan@test.pl');
         
         DBMS_OUTPUT.PUT_LINE('TEST NIEUDANY: Nie zgloszono bledu');
@@ -265,6 +265,30 @@ BEGIN
             preferencja_rzedu          => 2,
             ilosc_miejsc_do_zarezerwowania => 5
         );
+        
+                Admin_Pkg.dodaj_seans(
+            id_filmu => 2, 
+            id_sali => 1,  
+            data_rozpoczecia_filmu => TRUNC(SYSDATE +5 ) + (10/24)
+        );
+        
+        DBMS_OUTPUT.PUT_LINE('Seans filmu "Kraina Lodu" dodany pomyslnie.');
+        Klient_Pkg.Zarezerwuj_Seans(
+            email_uzytkownika          => 'jan@test.pl',
+            tytul_filmu                => 'Kraina Lodu',
+            data_seansu_in             => TRUNC(SYSDATE +5) + (10/24), 
+            preferencja_rzedu          => 3,
+            ilosc_miejsc_do_zarezerwowania => 1
+        );
+        
+        Klient_Pkg.Zarezerwuj_Seans(
+            email_uzytkownika          => 'zbigniew@test.pl',
+            tytul_filmu                => 'Kraina Lodu',
+            data_seansu_in             => TRUNC(SYSDATE +5) + (10/24), 
+            preferencja_rzedu          => 5,
+            ilosc_miejsc_do_zarezerwowania => 3
+        );
+        
         Admin_Pkg.popularnosc_filmu('Kraina Lodu');
         DBMS_OUTPUT.PUT_LINE('TEST ZAKONCZONY: Popularnosc filmu "Kraina Lodu" zostala sprawdzona.');
     EXCEPTION
@@ -289,3 +313,7 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
+
+
+
+

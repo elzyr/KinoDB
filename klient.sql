@@ -228,6 +228,7 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         WHEN NO_DATA_FOUND THEN
             RAISE_APPLICATION_ERROR(-20001, 'Brak aktywnych rezerwacji!');
     END Anuluj_Rezerwacje;
+    
 
     -- Procedura do wyswietlania rezerwacji uzytkownika
     PROCEDURE Pokaz_Rezerwacje(

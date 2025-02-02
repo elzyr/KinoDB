@@ -209,46 +209,49 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
 
         DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '"');
 
-        -- Przetwarzanie ka¿dego tygodnia
+
         FOR week_rec IN c_weeks LOOP
             l_liczba_tygodni := l_liczba_tygodni + 1;
             
-            -- Obliczanie wszystkich miejsc w tygodniu
-            SELECT COUNT(*)
-            INTO wszystkie_miejsca
-            FROM Repertuar_table r
-            JOIN Sala_table s ON r.sala_ref = REF(s)
-            CROSS JOIN TABLE(s.miejsca) m
-            WHERE r.film_ref = referencja_filmu
-              AND TRUNC(r.data_rozpoczecia, 'IW') = week_rec.week_start;
+            DECLARE
+                week_end DATE;
+            BEGIN
+                week_end := week_rec.week_start + 6; -- Koniec tygodnia (niedziela)
+            
+                SELECT COUNT(*)
+                INTO wszystkie_miejsca
+                FROM Repertuar_table r
+                JOIN Sala_table s ON r.sala_ref = REF(s)
+                CROSS JOIN TABLE(s.miejsca) m
+                WHERE r.film_ref = referencja_filmu
+                  AND r.data_rozpoczecia BETWEEN week_rec.week_start AND week_end;
 
-            -- Obliczanie sprzedanych biletów w tygodniu
-            SELECT COUNT(*)
-            INTO sprzedane_bilety
-            FROM Rezerwacja_table rez
-            JOIN Repertuar_table r ON rez.repertuar_ref = REF(r)
-            CROSS JOIN TABLE(rez.bilety) b
-            WHERE r.film_ref = referencja_filmu
-              AND TRUNC(r.data_rozpoczecia, 'IW') = week_rec.week_start
-              AND rez.czy_anulowane = 0;
+                SELECT COUNT(*)
+                INTO sprzedane_bilety
+                FROM Rezerwacja_table rez
+                JOIN Repertuar_table r ON rez.repertuar_ref = REF(r)
+                CROSS JOIN TABLE(rez.bilety) b
+                WHERE r.film_ref = referencja_filmu
+                  AND r.data_rozpoczecia BETWEEN week_rec.week_start AND week_end
+                  AND rez.czy_anulowane = 0;
 
-            -- Obliczanie procentowego zapelnienia
-            IF wszystkie_miejsca > 0 THEN
-                procent_sprzedazy := (sprzedane_bilety / wszystkie_miejsca) * 100;
-            ELSE
-                procent_sprzedazy := 0;
-            END IF;
+                -- Obliczanie procentowego zapelnienia
+                IF wszystkie_miejsca > 0 THEN
+                    procent_sprzedazy := (sprzedane_bilety / wszystkie_miejsca) * 100;
+                ELSE
+                    procent_sprzedazy := 0;
+                END IF;
 
-            -- Wypisanie wyniku
-            DBMS_OUTPUT.PUT_LINE(
-                TO_CHAR(week_rec.week_start, 'YYYY-MM-DD') || 
-                ' : ' || 
-                ROUND(procent_sprzedazy, 2) || 
-                '% zapelnienia'
-            );
+                DBMS_OUTPUT.PUT_LINE(
+                    'Tydzien: ' || TO_CHAR(week_rec.week_start, 'YYYY-MM-DD') || ' - ' || 
+                    TO_CHAR(week_end, 'YYYY-MM-DD') || 
+                    ' : ' || 
+                    ROUND(procent_sprzedazy, 2) || 
+                    '% zapelnienia'
+                );
+            END;
         END LOOP;
 
-        -- Komunikat gdy brak seansów
         IF l_liczba_tygodni = 0 THEN
             DBMS_OUTPUT.PUT_LINE('Brak seansow dla tego filmu.');
         END IF;

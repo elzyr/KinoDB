@@ -161,7 +161,7 @@ CREATE OR REPLACE TRIGGER trg_uzytkownik_age
 BEFORE INSERT OR UPDATE ON Uzytkownik_table
 FOR EACH ROW
 BEGIN
-    IF :NEW.data_urodzenia > ADD_MONTHS(SYSDATE, -12*15) THEN
+    IF MONTHS_BETWEEN(TRUNC(SYSDATE), :NEW.data_urodzenia) < 15 * 12 THEN
         RAISE_APPLICATION_ERROR(-20001, 'Uzytkownik musi miec co najmniej 15 lat.');
     END IF;
 END;
