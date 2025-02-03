@@ -98,7 +98,7 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
           FROM Sala_table s
          WHERE s.sala_id = id_sali;
 
-        -- Sprawdzenie, czy seans rozpoczyna siê w godzinach otwarcia kina
+        -- Sprawdzenie, czy seans rozpoczyna sie w godzinach otwarcia kina
         IF TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') < '07:00'
            OR TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') > '22:00' THEN
             RAISE_APPLICATION_ERROR(-20004, 'Kino rozpoczyna nowe seanse w godzinach 7:00 - 22:00.');
@@ -188,62 +188,62 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     PROCEDURE popularnosc_filmu(
         tytul_filmu IN VARCHAR2
     ) IS
-        v_film_ref REF Film;
-        v_total_seats NUMBER;
-        v_sold_tickets NUMBER;
-        v_percent NUMBER;
-        v_week_count NUMBER := 0;
-        v_week_start DATE;
-        v_week_end DATE;
+        referencja_filmu REF Film;
+        wszystkie_miejsca NUMBER;
+        miejsca_zajete NUMBER;
+        procent_wypelnienia NUMBER;
+        licznik_tygodni NUMBER := 0;
+        poczatek_tygodnia DATE;
+        koniec_tygodnia DATE;
         BEGIN
         SELECT REF(f)
-          INTO v_film_ref
+          INTO referencja_filmu
           FROM Film_table f
          WHERE f.tytul = tytul_filmu;
 
         DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '"');
 
         FOR rec IN (
-            SELECT DISTINCT TRUNC(r.data_rozpoczecia, 'IW') AS week_start
+            SELECT DISTINCT TRUNC(r.data_rozpoczecia, 'IW') AS tydzien_grania
               FROM Repertuar_table r
-             WHERE r.film_ref = v_film_ref
+             WHERE r.film_ref = referencja_filmu
              ORDER BY TRUNC(r.data_rozpoczecia, 'IW')
         ) LOOP
-            v_week_start := rec.week_start;
-            v_week_end   := v_week_start + 6; 
-            v_week_count := v_week_count + 1;
+            poczatek_tygodnia := rec.tydzien_grania;
+            koniec_tygodnia := poczatek_tygodnia + 6; 
+            licznik_tygodni := licznik_tygodni + 1;
 
             SELECT COUNT(*)
-              INTO v_total_seats
+              INTO wszystkie_miejsca
               FROM Repertuar_table r
               JOIN Sala_table s ON r.sala_ref = REF(s)
               CROSS JOIN TABLE(s.miejsca) m
-             WHERE r.film_ref = v_film_ref
-               AND r.data_rozpoczecia BETWEEN v_week_start AND v_week_end;
+             WHERE r.film_ref = referencja_filmu
+               AND r.data_rozpoczecia BETWEEN poczatek_tygodnia AND koniec_tygodnia;
 
             SELECT COUNT(*)
-              INTO v_sold_tickets
+              INTO miejsca_zajete
               FROM Rezerwacja_table rez
               JOIN Repertuar_table r ON rez.repertuar_ref = REF(r)
               CROSS JOIN TABLE(rez.bilety) b
-             WHERE r.film_ref = v_film_ref
-               AND r.data_rozpoczecia BETWEEN v_week_start AND v_week_end
+             WHERE r.film_ref = referencja_filmu
+               AND r.data_rozpoczecia BETWEEN poczatek_tygodnia AND koniec_tygodnia
                AND rez.czy_anulowane = 0;
 
-            IF v_total_seats > 0 THEN
-                v_percent := (v_sold_tickets / v_total_seats) * 100;
+            IF wszystkie_miejsca > 0 THEN
+                procent_wypelnienia := (miejsca_zajete / wszystkie_miejsca) * 100;
             ELSE
-                v_percent := 0;
+                procent_wypelnienia := 0;
             END IF;
 
             DBMS_OUTPUT.PUT_LINE(
-                'Tydzien: ' || TO_CHAR(v_week_start, 'YYYY-MM-DD') || ' - ' ||
-                TO_CHAR(v_week_end, 'YYYY-MM-DD') || ' : ' ||
-                ROUND(v_percent, 2) || '% zapelnienia'
+                'Tydzien: ' || TO_CHAR(poczatek_tygodnia, 'YYYY-MM-DD') || ' - ' ||
+                TO_CHAR(koniec_tygodnia, 'YYYY-MM-DD') || ' : ' ||
+                ROUND(procent_wypelnienia, 2) || '% zapelnienia'
             );
         END LOOP;
 
-        IF v_week_count = 0 THEN
+        IF licznik_tygodni = 0 THEN
             DBMS_OUTPUT.PUT_LINE('Brak seansow dla tego filmu.');
         END IF;
         EXCEPTION
