@@ -21,11 +21,9 @@ CREATE OR REPLACE PACKAGE Admin_Pkg AS
     PROCEDURE popularnosc_filmu(
         tytul_filmu IN VARCHAR2
     );
-    
     PROCEDURE wycofaj_film(
         tytul_filmu IN VARCHAR2
     );
-
 END Admin_Pkg;
 /
 CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
@@ -38,11 +36,11 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     ) IS
         referencja_kategorii REF Kategoria;
     BEGIN
-        -- Sprawdzenie czy kategoria istnieje
+        -- Sprawdzenie, czy kategoria istnieje
         SELECT REF(k)
-        INTO referencja_kategorii
-        FROM Kategoria_table k
-        WHERE k.kategoria_id = id_kategorii;
+          INTO referencja_kategorii
+          FROM Kategoria_table k
+         WHERE k.kategoria_id = id_kategorii;
 
         INSERT INTO Film_table (
             tytul,
@@ -57,16 +55,16 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             referencja_kategorii,
             0
         );
-        EXCEPTION
-            WHEN DUP_VAL_ON_INDEX THEN
-                RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule juz istnieje.');
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20003, 'Podana kategoria nie istnieje.');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20001, 'Wystapil blad podczas dodawania filmu.');
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Film o podanym tytule juz istnieje.');
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20003, 'Podana kategoria nie istnieje.');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Wystapil blad podczas dodawania filmu.');
     END dodaj_film;
 
-        PROCEDURE dodaj_seans(
+    PROCEDURE dodaj_seans(
         id_filmu IN NUMBER,
         id_sali IN NUMBER,
         data_rozpoczecia_filmu IN DATE
@@ -80,9 +78,9 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
     BEGIN
         -- Sprawdzenie, czy film jest wycofany
         SELECT czy_wycofany
-        INTO czy_film_wycofany
-        FROM Film_table
-        WHERE film_id = id_filmu;
+          INTO czy_film_wycofany
+          FROM Film_table
+         WHERE film_id = id_filmu;
 
         IF czy_film_wycofany = 1 THEN
             RAISE_APPLICATION_ERROR(-20016, 'Film zostal wycofany i nie mozna go dodac do repertuaru.');
@@ -90,38 +88,39 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
 
         -- Pobranie referencji do filmu
         SELECT REF(f)
-        INTO referencja_filmu
-        FROM Film_table f
-        WHERE f.film_id = id_filmu;
+          INTO referencja_filmu
+          FROM Film_table f
+         WHERE f.film_id = id_filmu;
 
         -- Pobranie referencji do sali
         SELECT REF(s)
-        INTO referencja_sali
-        FROM Sala_table s
-        WHERE s.sala_id = id_sali;
+          INTO referencja_sali
+          FROM Sala_table s
+         WHERE s.sala_id = id_sali;
 
-        -- Sprawdzenie, czy seans rozpoczyna sie w godzinach otwarcia kina
-        IF TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') < '07:00' OR TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') > '22:00' THEN
+        -- Sprawdzenie, czy seans rozpoczyna siê w godzinach otwarcia kina
+        IF TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') < '07:00'
+           OR TO_CHAR(data_rozpoczecia_filmu, 'HH24:MI') > '22:00' THEN
             RAISE_APPLICATION_ERROR(-20004, 'Kino rozpoczyna nowe seanse w godzinach 7:00 - 22:00.');
         END IF;
 
         SELECT data_rozpoczecia_filmu + (f.czas_trwania + 30) / 1440
-        INTO data_zakonczenia_filmu
-        FROM Film_table f
-        WHERE f.film_id = id_filmu;
+          INTO data_zakonczenia_filmu
+          FROM Film_table f
+         WHERE f.film_id = id_filmu;
 
         -- Sprawdzenie kolizji z istniejacymi seansami w tej sali
         SELECT COUNT(*)
-        INTO czy_juz_jest_seans
-        FROM Repertuar_table r
-        WHERE r.sala_ref = referencja_sali
-          AND (
+          INTO czy_juz_jest_seans
+          FROM Repertuar_table r
+         WHERE r.sala_ref = referencja_sali
+           AND (
                 (data_rozpoczecia_filmu BETWEEN r.data_rozpoczecia AND r.data_zakonczenia())
                 OR
                 (data_zakonczenia_filmu BETWEEN r.data_rozpoczecia AND r.data_zakonczenia())
                 OR
                 (r.data_rozpoczecia BETWEEN data_rozpoczecia_filmu AND data_zakonczenia_filmu)
-              );
+           );
 
         IF czy_juz_jest_seans > 0 THEN
             RAISE_APPLICATION_ERROR(-20005, 'Seans koliduje z istniejacymi seansami w tej sali.');
@@ -177,7 +176,8 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         nazwa_kategorii IN VARCHAR2
     ) IS
     BEGIN
-        INSERT INTO Kategoria_table (nazwa) VALUES (nazwa_kategorii);
+        INSERT INTO Kategoria_table (nazwa)
+        VALUES (nazwa_kategorii);
     EXCEPTION
         WHEN DUP_VAL_ON_INDEX THEN
             RAISE_APPLICATION_ERROR(-20010, 'Kategoria o podanej nazwie juz istnieje.');
@@ -185,82 +185,72 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
             RAISE_APPLICATION_ERROR(-20011, 'Wystapil blad podczas dodawania kategorii: ' || SQLERRM);
     END dodaj_kategorie;
 
-
     PROCEDURE popularnosc_filmu(
         tytul_filmu IN VARCHAR2
     ) IS
-        referencja_filmu REF Film;
-        wszystkie_miejsca NUMBER;
-        sprzedane_bilety NUMBER;
-        procent_sprzedazy NUMBER;
-        l_liczba_tygodni NUMBER := 0;
-        
-        CURSOR c_weeks IS
-            SELECT DISTINCT TRUNC(r.data_rozpoczecia, 'IW') AS week_start
-            FROM Repertuar_table r
-            WHERE r.film_ref = referencja_filmu
-            ORDER BY week_start;
-    BEGIN
-        -- Pobranie referencji do filmu
+        v_film_ref REF Film;
+        v_total_seats NUMBER;
+        v_sold_tickets NUMBER;
+        v_percent NUMBER;
+        v_week_count NUMBER := 0;
+        v_week_start DATE;
+        v_week_end DATE;
+        BEGIN
         SELECT REF(f)
-        INTO referencja_filmu
-        FROM Film_table f
-        WHERE f.tytul = tytul_filmu;
+          INTO v_film_ref
+          FROM Film_table f
+         WHERE f.tytul = tytul_filmu;
 
         DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '"');
 
+        FOR rec IN (
+            SELECT DISTINCT TRUNC(r.data_rozpoczecia, 'IW') AS week_start
+              FROM Repertuar_table r
+             WHERE r.film_ref = v_film_ref
+             ORDER BY TRUNC(r.data_rozpoczecia, 'IW')
+        ) LOOP
+            v_week_start := rec.week_start;
+            v_week_end   := v_week_start + 6; 
+            v_week_count := v_week_count + 1;
 
-        FOR week_rec IN c_weeks LOOP
-            l_liczba_tygodni := l_liczba_tygodni + 1;
-            
-            DECLARE
-                week_end DATE;
-            BEGIN
-                week_end := week_rec.week_start + 6; -- Koniec tygodnia (niedziela)
-            
-                SELECT COUNT(*)
-                INTO wszystkie_miejsca
-                FROM Repertuar_table r
-                JOIN Sala_table s ON r.sala_ref = REF(s)
-                CROSS JOIN TABLE(s.miejsca) m
-                WHERE r.film_ref = referencja_filmu
-                  AND r.data_rozpoczecia BETWEEN week_rec.week_start AND week_end;
+            SELECT COUNT(*)
+              INTO v_total_seats
+              FROM Repertuar_table r
+              JOIN Sala_table s ON r.sala_ref = REF(s)
+              CROSS JOIN TABLE(s.miejsca) m
+             WHERE r.film_ref = v_film_ref
+               AND r.data_rozpoczecia BETWEEN v_week_start AND v_week_end;
 
-                SELECT COUNT(*)
-                INTO sprzedane_bilety
-                FROM Rezerwacja_table rez
-                JOIN Repertuar_table r ON rez.repertuar_ref = REF(r)
-                CROSS JOIN TABLE(rez.bilety) b
-                WHERE r.film_ref = referencja_filmu
-                  AND r.data_rozpoczecia BETWEEN week_rec.week_start AND week_end
-                  AND rez.czy_anulowane = 0;
+            SELECT COUNT(*)
+              INTO v_sold_tickets
+              FROM Rezerwacja_table rez
+              JOIN Repertuar_table r ON rez.repertuar_ref = REF(r)
+              CROSS JOIN TABLE(rez.bilety) b
+             WHERE r.film_ref = v_film_ref
+               AND r.data_rozpoczecia BETWEEN v_week_start AND v_week_end
+               AND rez.czy_anulowane = 0;
 
-                -- Obliczanie procentowego zapelnienia
-                IF wszystkie_miejsca > 0 THEN
-                    procent_sprzedazy := (sprzedane_bilety / wszystkie_miejsca) * 100;
-                ELSE
-                    procent_sprzedazy := 0;
-                END IF;
+            IF v_total_seats > 0 THEN
+                v_percent := (v_sold_tickets / v_total_seats) * 100;
+            ELSE
+                v_percent := 0;
+            END IF;
 
-                DBMS_OUTPUT.PUT_LINE(
-                    'Tydzien: ' || TO_CHAR(week_rec.week_start, 'YYYY-MM-DD') || ' - ' || 
-                    TO_CHAR(week_end, 'YYYY-MM-DD') || 
-                    ' : ' || 
-                    ROUND(procent_sprzedazy, 2) || 
-                    '% zapelnienia'
-                );
-            END;
+            DBMS_OUTPUT.PUT_LINE(
+                'Tydzien: ' || TO_CHAR(v_week_start, 'YYYY-MM-DD') || ' - ' ||
+                TO_CHAR(v_week_end, 'YYYY-MM-DD') || ' : ' ||
+                ROUND(v_percent, 2) || '% zapelnienia'
+            );
         END LOOP;
 
-        IF l_liczba_tygodni = 0 THEN
+        IF v_week_count = 0 THEN
             DBMS_OUTPUT.PUT_LINE('Brak seansow dla tego filmu.');
         END IF;
-
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20012, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
-        WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20013, 'Wystapil blad podczas obliczania popularnosci: ' || SQLERRM);
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20012, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
+            WHEN OTHERS THEN
+                RAISE_APPLICATION_ERROR(-20013, 'Wystapil blad podczas obliczania popularnosci: ' || SQLERRM);
     END popularnosc_filmu;
 
     PROCEDURE wycofaj_film(
@@ -269,20 +259,20 @@ CREATE OR REPLACE PACKAGE BODY Admin_Pkg AS
         id_filmu NUMBER;
     BEGIN
         SELECT film_id
-        INTO id_filmu
-        FROM Film_table
-        WHERE tytul = tytul_filmu;
-        
+          INTO id_filmu
+          FROM Film_table
+         WHERE tytul = tytul_filmu;
+
         UPDATE Film_table
-        SET czy_wycofany = 1
-        WHERE film_id = id_filmu;
+           SET czy_wycofany = 1
+         WHERE film_id = id_filmu;
 
         DBMS_OUTPUT.PUT_LINE('Film "' || tytul_filmu || '" zostal wycofany.');
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20014, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
-            WHEN OTHERS THEN
-                RAISE_APPLICATION_ERROR(-20015, 'Wystapil blad podczas wycofywania filmu: ' || SQLERRM);
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20014, 'Nie znaleziono filmu o nazwie "' || tytul_filmu || '".');
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20015, 'Wystapil blad podczas wycofywania filmu: ' || SQLERRM);
     END wycofaj_film;
 
 END Admin_Pkg;
