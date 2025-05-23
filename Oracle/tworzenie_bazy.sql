@@ -3,13 +3,11 @@ BEGIN
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Repertuar_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Sala_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Film_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
-    BEGIN EXECUTE IMMEDIATE 'DROP TABLE Uzytkownik_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Kategoria_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE kategoria_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE sala_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE miejsce_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
-    BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE uzytkownik_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE film_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE repertuar_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE rezerwacja_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
@@ -22,7 +20,6 @@ BEGIN
     BEGIN EXECUTE IMMEDIATE 'DROP TYPE Miejsca_Typ FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TYPE Miejsce FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TYPE Film FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
-    BEGIN EXECUTE IMMEDIATE 'DROP TYPE Uzytkownik FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TYPE Kategoria FORCE'; EXCEPTION WHEN OTHERS THEN NULL; END;
 END;
 /
@@ -31,7 +28,6 @@ END;
 CREATE SEQUENCE kategoria_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE sala_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE miejsce_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE uzytkownik_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE film_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE repertuar_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE rezerwacja_seq START WITH 1 INCREMENT BY 1;
@@ -58,16 +54,6 @@ CREATE OR REPLACE TYPE Sala AS OBJECT (
     sala_id NUMBER,
     nazwa VARCHAR2(50),
     miejsca Miejsca_Typ
-);
-/
-
-CREATE OR REPLACE TYPE Uzytkownik AS OBJECT (
-    user_id NUMBER,
-    imie VARCHAR2(50),
-    nazwisko VARCHAR2(50),
-    data_urodzenia DATE,
-    email VARCHAR2(100),
-    rola VARCHAR2(50)
 );
 /
 
@@ -108,7 +94,7 @@ CREATE OR REPLACE TYPE Rezerwacja AS OBJECT (
     cena_laczna NUMBER,
     czy_anulowane NUMBER,
     repertuar_ref REF Repertuar,
-    uzytkownik_ref REF Uzytkownik,
+    uzytkownik NUMBER,
     bilety Bilety_Typ
 );
 /
@@ -124,13 +110,6 @@ CREATE TABLE Sala_table OF Sala (
     PRIMARY KEY (sala_id),
     CONSTRAINT sala_nazwa_ck CHECK (nazwa IS NOT NULL)
 ) NESTED TABLE miejsca STORE AS miejsca_nt;
-/
-
-CREATE TABLE Uzytkownik_table OF Uzytkownik (
-    PRIMARY KEY (user_id),
-    CONSTRAINT uzytkownik_email_unique UNIQUE(email),
-    CONSTRAINT uzytkownik_rola_ck CHECK (rola IN ('standard','premium'))
-);
 /
 
 CREATE TABLE Film_table OF Film (
@@ -151,22 +130,19 @@ CREATE TABLE Rezerwacja_table OF Rezerwacja (
     PRIMARY KEY (rezerwacja_id),
     CONSTRAINT rezerwacja_cena_laczna_ck CHECK (cena_laczna > 0),
     CONSTRAINT rezerwacja_czy_anulowane_ck CHECK (czy_anulowane IN (0, 1)),
-    SCOPE FOR (repertuar_ref) IS Repertuar_table, 
-    SCOPE FOR (uzytkownik_ref) IS Uzytkownik_table 
+    SCOPE FOR (repertuar_ref) IS Repertuar_table
 ) NESTED TABLE bilety STORE AS bilety_nt;
 /
 
 -- Triggery
-CREATE OR REPLACE TRIGGER trg_uzytkownik_age
-BEFORE INSERT OR UPDATE ON Uzytkownik_table
+CREATE OR REPLACE TRIGGER trg_rep_minute
+BEFORE INSERT OR UPDATE OF data_rozpoczecia ON Repertuar_table
 FOR EACH ROW
 BEGIN
-    IF MONTHS_BETWEEN(TRUNC(SYSDATE), :NEW.data_urodzenia) < 15 * 12 THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Uzytkownik musi miec co najmniej 15 lat.');
-    END IF;
+    :NEW.data_rozpoczecia :=
+        TRUNC(:NEW.data_rozpoczecia, 'MI');
 END;
 /
-
 
 CREATE OR REPLACE TRIGGER trg_kategoria_id
 BEFORE INSERT ON Kategoria_table
@@ -184,13 +160,6 @@ BEGIN
 END;
 /
 
-CREATE OR REPLACE TRIGGER trg_uzytkownik_id
-BEFORE INSERT ON Uzytkownik_table
-FOR EACH ROW
-BEGIN
-    :NEW.user_id := uzytkownik_seq.NEXTVAL;
-END;
-/
 
 CREATE OR REPLACE TRIGGER trg_film_id
 BEFORE INSERT ON Film_table
@@ -227,26 +196,5 @@ CREATE OR REPLACE TYPE BODY Repertuar AS
         
         RETURN data_rozpoczecia + (czas_trwania + 30)/1440; --(24h w minutach)
     END;
-END;
-/
-
-CREATE OR REPLACE TRIGGER release_seat_on_cancel
-AFTER UPDATE OF czy_anulowane ON Rezerwacja_table
-FOR EACH ROW
-WHEN (NEW.czy_anulowane = 1)
-DECLARE
-    sala_id NUMBER;
-BEGIN
-    -- pobieranie id sali
-    SELECT DEREF(:NEW.repertuar_ref).sala_ref.sala_id INTO sala_id
-    FROM DUAL;
-
-    -- Zwolnienie miejsc
-    FOR bilet IN (SELECT b.rzad, b.miejsce FROM TABLE(:OLD.bilety) b) 
-    LOOP
-        UPDATE TABLE(SELECT s.miejsca FROM Sala_table s WHERE s.sala_id = sala_id) m
-        SET m.czy_zajete = 0
-        WHERE m.rzad = bilet.rzad AND m.numer = bilet.miejsce;
-    END LOOP;
 END;
 /
