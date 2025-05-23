@@ -1,309 +1,243 @@
 CREATE OR REPLACE PACKAGE Klient_Pkg AS
 
-    PROCEDURE Zarezerwuj_Seans(
-        email_uzytkownika VARCHAR2,
-        tytul_filmu VARCHAR2,
-        data_seansu_in DATE,
-        preferencja_rzedu NUMBER,
-        ilosc_miejsc_do_zarezerwowania NUMBER
-    );
+  PROCEDURE Zarezerwuj_Seans (
+      p_user_id NUMBER,
+      p_tytul_filmu VARCHAR2,
+      p_data_seansu_in DATE,
+      p_preferencja_rzedu NUMBER,
+      p_ilosc_miejsc_do_zarezerwowania NUMBER,
+      p_rabat NUMBER DEFAULT 1   -- 0.9 jesli premium
+  );
 
-    PROCEDURE Anuluj_Rezerwacje(
-        tytul_filmu VARCHAR2,
-        data_seansu_in DATE,
-        email_uzytkownika VARCHAR2
-    );
-    
-    PROCEDURE Pokaz_Rezerwacje(
-        email_uzytkownika VARCHAR2
-    );
-    
-    PROCEDURE Pokaz_Seanse(
-        data_seansu_in DATE
-    );
-    
-    PROCEDURE Zmien_Typ_Konta(
-        email_uzytkownika VARCHAR2,
-        nowy_typ_konta VARCHAR2
-    );
-    
-    PROCEDURE Sprawdz_Wiek(
-        email_uzytkownika VARCHAR2,
-        tytul_filmu VARCHAR2
-    );
+  PROCEDURE Anuluj_Rezerwacje (
+      p_user_id NUMBER,
+      p_tytul_filmu VARCHAR2,
+      p_data_seansu_in DATE
+  );
 
+  PROCEDURE Pokaz_Rezerwacje (
+      p_user_id NUMBER
+  );
+
+  PROCEDURE Pokaz_Seanse (
+      p_data_seansu_in DATE
+  );
 END Klient_Pkg;
 /
 
 
 CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
 
-    -- Procedura do sprawdzania wieku uzytkownika wzgledem minimalnego wieku filmu
-    PROCEDURE Sprawdz_Wiek(
-        email_uzytkownika VARCHAR2,
-        tytul_filmu VARCHAR2
+    PROCEDURE Zarezerwuj_Seans (
+        p_user_id                         NUMBER,
+        p_tytul_filmu                     VARCHAR2,
+        p_data_seansu_in                  DATE,
+        p_preferencja_rzedu               NUMBER,
+        p_ilosc_miejsc_do_zarezerwowania  NUMBER,
+        p_rabat                           NUMBER
     ) IS
-        data_urodzenia_uzytkownika DATE;
-        wiek_uzytkownika NUMBER;
-        wymagany_wiek_filmu NUMBER;
+        id_sali        NUMBER;
+        id_seansu      NUMBER;
+        ref_repertuar  REF Repertuar;
+    
+        bilety_kolekcja  Bilety_Typ := Bilety_Typ();
+        current_bilet_id NUMBER      := 0;
     BEGIN
-        SELECT u.data_urodzenia INTO data_urodzenia_uzytkownika
-        FROM Uzytkownik_table u
-        WHERE u.email = email_uzytkownika;
-
-        wiek_uzytkownika := TRUNC(MONTHS_BETWEEN(SYSDATE, data_urodzenia_uzytkownika) / 12);
-
-        SELECT f.minimalny_wiek INTO wymagany_wiek_filmu
-        FROM Film_table f
-        WHERE f.tytul = tytul_filmu;
-
-        IF wiek_uzytkownika < wymagany_wiek_filmu THEN
-            RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie spelnia wymaganego wieku dla tego filmu.');
-        END IF;
-    END Sprawdz_Wiek;
-
-    -- Procedura do rezerwacji seansu
-    PROCEDURE Zarezerwuj_Seans(
-        email_uzytkownika VARCHAR2,
-        tytul_filmu VARCHAR2,
-        data_seansu_in DATE,
-        preferencja_rzedu NUMBER,
-        ilosc_miejsc_do_zarezerwowania NUMBER
-    ) IS
-        cena_laczna NUMBER := 0;
-        id_rezerwacji NUMBER;
-        id_sali NUMBER;
-        id_seansu NUMBER;
-        ref_uzytkownika REF Uzytkownik;
-        ref_repertuar REF Repertuar;
-        bilety_kolekcja Bilety_Typ := Bilety_Typ();
-        rabat NUMBER := 1.0;
-        typ_konta VARCHAR2(20);
-        current_bilet_id NUMBER := 0;
-    BEGIN
-        -- Sprawdzenie wieku
-        Sprawdz_Wiek(email_uzytkownika, tytul_filmu);
-       
-        BEGIN
-            SELECT rola INTO typ_konta
-            FROM Uzytkownik_table
-            WHERE email = email_uzytkownika;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20009, 'Uzytkownik nie istnieje.');
-        END;
-
-        IF typ_konta = 'premium' THEN
-            rabat := 0.9;
-        END IF;
-
-        -- Pobranie ID seansu i sali
-        BEGIN
-            SELECT r.repertuar_id, DEREF(r.sala_ref).sala_id
-            INTO id_seansu, id_sali
-            FROM Repertuar_table r
-            JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
-            WHERE f.tytul = tytul_filmu
-            AND r.data_rozpoczecia = data_seansu_in;
-            
-            SELECT REF(r) INTO ref_repertuar 
-            FROM Repertuar_table r 
-            WHERE r.repertuar_id = id_seansu;
-            
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                RAISE_APPLICATION_ERROR(-20010, 'Nie znaleziono seansu.');
-        END;
-
-        -- Rezerwacja miejsc
-        FOR i IN 1..ilosc_miejsc_do_zarezerwowania LOOP
+        SELECT r.repertuar_id,
+               DEREF(r.sala_ref).sala_id,
+               REF(r)
+        INTO   id_seansu, id_sali, ref_repertuar
+        FROM   Repertuar_table r
+        JOIN   Film_table      f ON f.film_id = DEREF(r.film_ref).film_id
+        WHERE  f.tytul          = p_tytul_filmu
+          AND  r.data_rozpoczecia = p_data_seansu_in;
+    
+        FOR i IN 1 .. p_ilosc_miejsc_do_zarezerwowania LOOP
             DECLARE
                 miejsce_rec Miejsce;
             BEGIN
-                BEGIN
-                    SELECT VALUE(m) INTO miejsce_rec
-                    FROM TABLE(
-                        SELECT s.miejsca FROM Sala_table s
-                        WHERE s.sala_id = id_sali
-                    ) m
-                    WHERE m.rzad = preferencja_rzedu
-                    AND m.czy_zajete = 0
-                    FETCH FIRST 1 ROWS ONLY;
-                EXCEPTION
-                    WHEN NO_DATA_FOUND THEN
-                        RAISE_APPLICATION_ERROR(-20011, 'Brak wolnych miejsc w wybranym rzêdzie.');
-                END;
-
+                SELECT VALUE(m)
+                INTO   miejsce_rec
+                FROM   TABLE(
+                          SELECT s.miejsca
+                          FROM   Sala_table s
+                          WHERE  s.sala_id = id_sali
+                       ) m
+                WHERE  m.rzad       = p_preferencja_rzedu
+                  AND  m.czy_zajete = 0
+                FETCH FIRST 1 ROWS ONLY;
+    
+                /* Dodaj bilet do kolekcji */
                 current_bilet_id := current_bilet_id + 1;
-
-                -- Dodanie biletu do kolekcji
                 bilety_kolekcja.EXTEND;
                 bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
-                    current_bilet_id,        
-                    50 * rabat,
-                    preferencja_rzedu,
-                    miejsce_rec.numer
-                );
-
-                -- Miejsce zajete
+                       current_bilet_id,
+                       50 * p_rabat,              -- cena z rabatem
+                       p_preferencja_rzedu,
+                       miejsce_rec.numer );
+    
+                /* Oznacz miejsce jako zajete */
                 UPDATE TABLE(
-                    SELECT s.miejsca FROM Sala_table s
-                    WHERE s.sala_id = id_sali
-                ) m
-                SET m.czy_zajete = 1
-                WHERE m.rzad = preferencja_rzedu
-                AND m.numer = miejsce_rec.numer;
+                         SELECT s.miejsca
+                         FROM   Sala_table s
+                         WHERE  s.sala_id = id_sali
+                      ) m
+                SET    m.czy_zajete = 1
+                WHERE  m.rzad   = p_preferencja_rzedu
+                  AND  m.numer = miejsce_rec.numer;
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    RAISE_APPLICATION_ERROR(-20011,
+                       'Brak wolnych miejsc w wybranym rzêdzie.');
             END;
         END LOOP;
-
-        -- Pobierz REF do uzytkownika
-        SELECT REF(u) INTO ref_uzytkownika
-        FROM Uzytkownik_table u
-        WHERE u.email = email_uzytkownika;
-
-        -- Wstawienie rezerwacji
+    
+        /* 1C.  Zapisz rezerwacje */
         INSERT INTO Rezerwacja_table VALUES (
             rezerwacja_seq.NEXTVAL,
             SYSDATE,
-            50 * ilosc_miejsc_do_zarezerwowania * rabat,
-            0,
-            ref_repertuar, 
-            ref_uzytkownika, 
+            50 * p_ilosc_miejsc_do_zarezerwowania * p_rabat,
+            0,                 -- czy_anulowane
+            ref_repertuar,
+            p_user_id,         -- <- zapisujemy samo ID u¿ytkownika
             bilety_kolekcja
         );
-
+    
     EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20010, 'Nie znaleziono seansu.');
         WHEN OTHERS THEN
-            RAISE_APPLICATION_ERROR(-20012, 'Blad rezerwacji: ' || SQLERRM);
+            RAISE_APPLICATION_ERROR(-20012,
+                'B³¹d rezerwacji: ' || SQLERRM);
     END Zarezerwuj_Seans;
 
     -- Procedura do anulowania rezerwacji
-    PROCEDURE Anuluj_Rezerwacje(
-        tytul_filmu VARCHAR2,
-        data_seansu_in DATE,
-        email_uzytkownika VARCHAR2
-    ) IS
-        id_seansu NUMBER;
-        id_rezerwacji NUMBER;
-        data_rozpoczecia_seansu DATE;
-    BEGIN
-        -- Pobranie ID seansu
-        SELECT r.repertuar_id INTO id_seansu
+PROCEDURE Anuluj_Rezerwacje (
+      p_user_id        NUMBER,
+      p_tytul_filmu    VARCHAR2,
+      p_data_seansu_in DATE
+  ) IS
+      id_seansu  NUMBER;
+      id_rezerw  NUMBER;
+      dt_start   DATE;
+      v_bilety   Rezerwacja_table.bilety%TYPE;
+      v_sala_id  NUMBER;
+  BEGIN
+      /* seans */
+      SELECT r.repertuar_id,
+             r.data_rozpoczecia
+        INTO id_seansu, dt_start
         FROM Repertuar_table r
-        JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
-        WHERE f.tytul = tytul_filmu
-        AND r.data_rozpoczecia = data_seansu_in;
+        JOIN Film_table      f
+          ON f.film_id = DEREF(r.film_ref).film_id
+       WHERE f.tytul           = p_tytul_filmu
+         AND r.data_rozpoczecia = p_data_seansu_in;
 
-        -- Pobranie daty rozpoczecia seansu
-        SELECT data_rozpoczecia INTO data_rozpoczecia_seansu
-        FROM Repertuar_table
-        WHERE repertuar_id = id_seansu;
+      IF SYSDATE > dt_start - 1/24 THEN
+          RAISE_APPLICATION_ERROR(-20006,
+            'Nie mo¿na anulowaæ rezerwacji mniej ni¿ godzinê przed seansem!');
+      END IF;
 
-        -- Sprawdzenie terminu anulowania
-        IF SYSDATE > data_rozpoczecia_seansu - (1/24) THEN
-            RAISE_APPLICATION_ERROR(-20006, 'Nie mozna anulowac rezerwacji mniej niz godzine przed rozpoczeciem!');
-        END IF;
-
-        -- Pobranie ID rezerwacji
-        SELECT rezerwacja_id INTO id_rezerwacji
+      /* rezerwacja */
+      SELECT rezerwacja_id
+        INTO id_rezerw
         FROM Rezerwacja_table
-        WHERE uzytkownik_ref = (
-            SELECT REF(u) 
-            FROM Uzytkownik_table u 
-            WHERE u.email = email_uzytkownika
-        )
-        AND repertuar_ref = (
-            SELECT REF(r) 
-            FROM Repertuar_table r 
-            WHERE r.repertuar_id = id_seansu
-        )
-        AND czy_anulowane = 0;
+       WHERE uzytkownik    = p_user_id
+         AND repertuar_ref = (
+               SELECT REF(r)
+                 FROM Repertuar_table r
+                WHERE r.repertuar_id = id_seansu
+             )
+         AND czy_anulowane = 0;
 
-        -- Aktualizacja rezerwacji jako anulowanej
-        UPDATE Rezerwacja_table
-        SET czy_anulowane = 1
-        WHERE rezerwacja_id = id_rezerwacji;
+      UPDATE Rezerwacja_table
+         SET czy_anulowane = 1
+       WHERE rezerwacja_id = id_rezerw;
 
-    EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            RAISE_APPLICATION_ERROR(-20001, 'Brak aktywnych rezerwacji!');
-    END Anuluj_Rezerwacje;
+      SELECT bilety
+        INTO v_bilety
+        FROM Rezerwacja_table
+       WHERE rezerwacja_id = id_rezerw;
+
+      SELECT DEREF(r.sala_ref).sala_id
+        INTO v_sala_id
+        FROM Repertuar_table r
+       WHERE r.repertuar_id = id_seansu;
+
+      FOR b IN (
+        SELECT b.rzad, b.miejsce
+          FROM TABLE(v_bilety) b
+      ) LOOP
+        UPDATE TABLE(
+          SELECT s.miejsca
+            FROM Sala_table s
+           WHERE s.sala_id = v_sala_id
+        ) m
+        SET m.czy_zajete = 0
+        WHERE m.rzad   = b.rzad
+          AND m.numer = b.miejsce;
+      END LOOP;
+
+  EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+          RAISE_APPLICATION_ERROR(-20001,
+            'Brak aktywnych rezerwacji!');
+  END Anuluj_Rezerwacje;
     
 
     -- Procedura do wyswietlania rezerwacji uzytkownika
-    PROCEDURE Pokaz_Rezerwacje(
-        email_uzytkownika VARCHAR2
+    PROCEDURE Pokaz_Rezerwacje (
+        p_user_id NUMBER
     ) IS
-        CURSOR c_rezerwacje IS
-            SELECT 
-                r.rezerwacja_id, 
-                f.tytul, 
-                rep.data_rozpoczecia AS data_seansu,
-                r.cena_laczna, 
-                r.bilety
-            FROM Rezerwacja_table r
-            JOIN Repertuar_table rep ON r.repertuar_ref = REF(rep)
-            JOIN Film_table f ON rep.film_ref = REF(f)
-            WHERE r.uzytkownik_ref = (
-                SELECT REF(u) 
-                FROM Uzytkownik_table u 
-                WHERE u.email = email_uzytkownika
-            );
+        CURSOR c_rez IS
+            SELECT r.rezerwacja_id,
+                   f.tytul,
+                   rep.data_rozpoczecia AS data_seansu,
+                   r.cena_laczna,
+                   r.bilety
+            FROM   Rezerwacja_table r
+            JOIN   Repertuar_table rep ON r.repertuar_ref = REF(rep)
+            JOIN   Film_table      f   ON rep.film_ref    = REF(f)
+            WHERE  r.uzytkownik = p_user_id;
     BEGIN
-        FOR rezerwacja IN c_rezerwacje LOOP
-            DBMS_OUTPUT.PUT_LINE('Rezerwacja ID: ' || rezerwacja.rezerwacja_id);
-            DBMS_OUTPUT.PUT_LINE('Film: ' || rezerwacja.tytul);
-            DBMS_OUTPUT.PUT_LINE('Data seansu: ' || TO_CHAR(rezerwacja.data_seansu, 'DD-MM-YYYY HH24:MI')); 
-            
-            FOR bilet IN (SELECT * FROM TABLE(rezerwacja.bilety)) LOOP
-                DBMS_OUTPUT.PUT_LINE('-> Miejsce: Rzad ' || bilet.rzad || ', Numer ' || bilet.miejsce);
+        FOR rec IN c_rez LOOP
+            DBMS_OUTPUT.PUT_LINE('Rezerwacja ID: ' || rec.rezerwacja_id);
+            DBMS_OUTPUT.PUT_LINE('Film: '         || rec.tytul);
+            DBMS_OUTPUT.PUT_LINE('Data seansu: '  ||
+                 TO_CHAR(rec.data_seansu,'DD-MM-YYYY HH24:MI'));
+    
+            FOR b IN (SELECT * FROM TABLE(rec.bilety)) LOOP
+                DBMS_OUTPUT.PUT_LINE('-> Miejsce: Rz¹d '||b.rzad||
+                                     ', Numer '||b.miejsce);
             END LOOP;
-            
-            DBMS_OUTPUT.PUT_LINE('Cena laczna: ' || rezerwacja.cena_laczna || ' PLN');
-            DBMS_OUTPUT.PUT_LINE('-------------------------------------------');
+    
+            DBMS_OUTPUT.PUT_LINE('Cena ³¹czna: ' || rec.cena_laczna || ' PLN');
+            DBMS_OUTPUT.PUT_LINE('-------------------------------------');
         END LOOP;
     END Pokaz_Rezerwacje;
 
 
     -- Procedura do wyswietlania seansow w okreslonym dniu
-    PROCEDURE Pokaz_Seanse(
-        data_seansu_in DATE
+    PROCEDURE Pokaz_Seanse (
+        p_data_seansu_in DATE
     ) IS
     BEGIN
-        FOR seans IN (
-            SELECT 
-                f.tytul, 
-                r.data_rozpoczecia, 
-                (SELECT COUNT(*) FROM TABLE(s.miejsca) WHERE czy_zajete = 0) AS wolne_miejsca
-            FROM Repertuar_table r
-            JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
-            JOIN Sala_table s ON s.sala_id = DEREF(r.sala_ref).sala_id
-            WHERE TRUNC(r.data_rozpoczecia) = TRUNC(data_seansu_in)
+        FOR s IN (
+            SELECT  f.tytul,
+                    r.data_rozpoczecia,
+                    (SELECT COUNT(*)
+                       FROM TABLE(sa.miejsca)
+                       WHERE czy_zajete = 0) AS wolne
+            FROM   Repertuar_table r
+            JOIN   Film_table  f  ON f.film_id = DEREF(r.film_ref).film_id
+            JOIN   Sala_table  sa ON sa.sala_id = DEREF(r.sala_ref).sala_id
+            WHERE  TRUNC(r.data_rozpoczecia) = TRUNC(p_data_seansu_in)
         ) LOOP
-            DBMS_OUTPUT.PUT_LINE(seans.tytul || ' | ' || 
-                TO_CHAR(seans.data_rozpoczecia, 'HH24:MI') || ' | Wolne miejsca: ' || seans.wolne_miejsca);
+            DBMS_OUTPUT.PUT_LINE(
+               s.tytul || ' | ' ||
+               TO_CHAR(s.data_rozpoczecia, 'HH24:MI') ||
+               ' | Wolne miejsca: ' || s.wolne);
         END LOOP;
     END Pokaz_Seanse;
-
-
-    -- Procedura do zmiany typu konta uzytkownika
-    PROCEDURE Zmien_Typ_Konta(
-        email_uzytkownika VARCHAR2,
-        nowy_typ_konta VARCHAR2
-    ) IS
-    BEGIN
-        IF nowy_typ_konta NOT IN ('standard', 'premium') THEN
-            RAISE_APPLICATION_ERROR(-20007, 'Niepoprawny typ konta!');
-        END IF;
-
-        UPDATE Uzytkownik_table
-        SET rola = nowy_typ_konta
-        WHERE email = email_uzytkownika;
-
-        IF SQL%ROWCOUNT = 0 THEN
-            RAISE_APPLICATION_ERROR(-20008, 'Uzytkownik nie istnieje!');
-        END IF;
-    END Zmien_Typ_Konta;
-
 END Klient_Pkg;
 /

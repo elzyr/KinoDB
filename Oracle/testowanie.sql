@@ -11,17 +11,18 @@ BEGIN
  Admin_Pkg.dodaj_seans(1, 1, TO_DATE('2026-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS'));
  Admin_Pkg.dodaj_seans(2, 2, TO_DATE('2026-01-02 22:00:00', 'YYYY-MM-DD HH24:MI:SS'));
 
- INSERT INTO Uzytkownik_table VALUES (
-  Uzytkownik(NULL, 'Jan', 'Kowalski', TO_DATE('2005-01-31', 'YYYY-MM-DD'), 'jan@test.pl', 'standard')
- );
-
- INSERT INTO Uzytkownik_table VALUES (
-  Uzytkownik(NULL, 'Anna', 'Nowak', TO_DATE('2009-01-31', 'YYYY-MM-DD'), 'anna@test.pl', 'premium')
- );
-
- INSERT INTO Uzytkownik_table VALUES (
-  Uzytkownik(NULL, 'Zbigniew', 'Szczupak', TO_DATE('2000-01-31', 'YYYY-MM-DD'), 'zbigniew@test.pl', 'premium')
- );
+-- INSERT INTO Uzytkownik_table VALUES (
+--  Uzytkownik(NULL, 'Jan', 'Kowalski', TO_DATE('2005-01-31', 'YYYY-MM-DD'), 'jan@test.pl', 'standard')
+-- );
+--
+-- INSERT INTO Uzytkownik_table VALUES (
+--  Uzytkownik(NULL, 'Anna', 'Nowak', TO_DATE('2009-01-31', 'YYYY-MM-DD'), 'anna@test.pl', 'premium')
+-- );
+--
+-- INSERT INTO Uzytkownik_table VALUES (
+--  Uzytkownik(NULL, 'Zbigniew', 'Szczupak', TO_DATE('2000-01-31', 'YYYY-MM-DD'), 'zbigniew@test.pl', 'premium')
+-- );
+commit;
 END;
 /
 
@@ -246,3 +247,13 @@ EXCEPTION
   DBMS_OUTPUT.PUT_LINE('TEST UDANY: ' || SQLERRM);
 END;
 /
+
+SELECT r.repertuar_id,
+       DEREF(r.film_ref).film_id   AS film_id,
+       DEREF(r.film_ref).tytul     AS tytul,
+       TO_CHAR(r.data_rozpoczecia,'YYYY-MM-DD HH24:MI:SS') AS start_time
+FROM   Repertuar_table r;
+
+BEGIN
+klient_pkg.pokaz_rezerwacje(1);
+END;
