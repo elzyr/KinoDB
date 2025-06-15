@@ -52,3 +52,8 @@ EXEC Admin_ZapiszFilmy
  @Miesiac = 1,
  @Rok     = 2026;
 GO
+
+go
+EXEC Admin_Statystyki_do_pliku 
+@Miesiac = 12, 
+@Rok = 2025;

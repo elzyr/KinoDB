@@ -170,30 +170,36 @@ CREATE OR ALTER VIEW Admin_PopularnoscFilmow AS
  );
 GO
 
-CREATE OR ALTER PROCEDURE Admin_ZapiszFilmy
- @Miesiac TINYINT,
- @Rok INT
+
+
+
+CREATE OR ALTER PROCEDURE Admin_Statystyki_do_pliku
+    @Miesiac INT,
+    @Rok     INT
 AS
 BEGIN
- SET NOCOUNT ON;
+    SET NOCOUNT ON;
 
- IF @Miesiac NOT BETWEEN 1 AND 12
-  THROW 50010, N'Parametr @Miesiac musi być z zakresu 1–12.', 1;
- IF @Rok < 1900 OR @Rok > 9999
-  THROW 50011, N'Parametr @Rok musi być w rozsądnym zakresie (1900–9999).', 1;
+    DECLARE @sql NVARCHAR(MAX);
+    DECLARE @plik NVARCHAR(200) = 'C:\Temp\statystyki.xlsx';
 
- DECLARE @DataOd DATE, @DataDo DATE;
- SET @DataOd = DATEFROMPARTS(@Rok, @Miesiac, 1);
- SET @DataDo = EOMONTH(@DataOd);
+    SET @sql = '
+    INSERT INTO OPENROWSET(
+        ''Microsoft.ACE.OLEDB.12.0'',
+        ''Excel 12.0 Xml;HDR=YES;Database=' + @plik + ''',
+        ''SELECT tytul, LiczbaRezerwacji, ProcZapelnienia FROM [Arkusz1$]'')
+    SELECT
+        tytul,
+        COUNT(*) AS LiczbaRezerwacji,
+        CAST(AVG(ProcZapelnienia) AS DECIMAL(5,2)) AS ProcZapelnienia
+    FROM Admin_PopularnoscFilmow
+    WHERE MONTH(PoczatekTygodnia) = ' + CAST(@Miesiac AS NVARCHAR) + '
+      AND YEAR(PoczatekTygodnia) = ' + CAST(@Rok AS NVARCHAR) + '
+    GROUP BY tytul;
+    ';
 
- SELECT
-  tytul,
-  PoczatekTygodnia,
-  KoniecTygodnia,
-  ProcZapelnienia
- FROM Admin_PopularnoscFilmow
- WHERE KoniecTygodnia >= @DataOd
-   AND PoczatekTygodnia <= @DataDo
- ORDER BY tytul, PoczatekTygodnia;
+    EXEC sp_executesql @sql;
 END;
 GO
+
+

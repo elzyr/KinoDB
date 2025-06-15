@@ -13,7 +13,7 @@ sp_addlinkedserver
      ,  @datasrc =  N'  (DESCRIPTION =
     (ADDRESS = (PROTOCOL = TCP)(HOST = localhost)(PORT = 1521))
     (CONNECT_DATA =
-      (SERVER = DEDICATED)
+      (SERVER = SHARED)
       (SERVICE_NAME = pd19c)
     )
   )';
