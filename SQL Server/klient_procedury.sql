@@ -35,7 +35,9 @@ BEGIN
   @IloscMiejsc,
   @rabat
  ) AT kinolodz;
+ EXEC Admin_AktualizujStatystykiSprzedazy @TytulFilmu;
 END;
+
 GO
 
 CREATE OR ALTER PROCEDURE klient_AnulujRezerwacje
@@ -55,6 +57,7 @@ BEGIN
   @TytulFilmu,
   @DataSeansu
  ) AT kinolodz;
+ EXEC Admin_AktualizujStatystykiSprzedazy @TytulFilmu;
 END;
 GO
 

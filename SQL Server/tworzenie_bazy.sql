@@ -1,6 +1,5 @@
 USE master;
 GO
-
 IF DB_ID(N'KinoDB') IS NOT NULL
 BEGIN
     ALTER DATABASE KinoDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
@@ -45,18 +44,13 @@ GO
 
 CREATE TABLE statystyki_sprzedazy (
     stat_id INT IDENTITY(1,1) PRIMARY KEY,
-    kino_id INT NOT NULL
-      CONSTRAINT FK_Sprzedazy_Kina FOREIGN KEY (kino_id)
-        REFERENCES dbo.Kina(kino_id),
-    film_id INT NOT NULL
-      CONSTRAINT FK_Sprzedazy_Film FOREIGN KEY (film_id)
-        REFERENCES dbo.Filmy(film_id),
-    data_start DATETIME NOT NULL,
-    data_koniec DATETIME NOT NULL,
-    popularnosc INT NOT NULL DEFAULT(0)
-      CONSTRAINT CK_Sprzedazy_popularnosc CHECK (popularnosc >= 0)
+    tytul NVARCHAR(200) NOT NULL,
+    srednia_popularnosc DECIMAL(5,2) NOT NULL,
+    poziom_oceny NVARCHAR(50) NOT NULL,
+    ostatnia_aktualizacja DATETIME NOT NULL DEFAULT GETDATE()
 );
 GO
+
 
 CREATE TABLE Uzytkownicy (
     user_id INT IDENTITY(1,1) PRIMARY KEY,

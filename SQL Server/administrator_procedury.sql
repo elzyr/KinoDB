@@ -203,3 +203,48 @@ END;
 GO
 
 
+
+CREATE OR ALTER PROCEDURE Admin_AktualizujStatystykiSprzedazy
+    @Tytul NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE 
+        @Srednia DECIMAL(5,2),
+        @Ocena NVARCHAR(50);
+
+    SELECT @Srednia = AVG(ProcZapelnienia)
+    FROM Admin_PopularnoscFilmow
+    WHERE tytul = @Tytul;
+
+    IF @Srednia IS NULL
+    BEGIN
+        RAISERROR('Brak danych popularności dla filmu: %s', 16, 1, @Tytul);
+        RETURN;
+    END
+
+    SET @Ocena = CASE 
+        WHEN @Srednia < 20 THEN 'Słaba sprzedaż'
+        WHEN @Srednia < 50 THEN 'Umiarkowana sprzedaż'
+        WHEN @Srednia < 80 THEN 'Dobra sprzedaż'
+        ELSE 'Bardzo dobra sprzedaż'
+    END;
+
+    IF EXISTS (SELECT 1 FROM statystyki_sprzedazy WHERE tytul = @Tytul)
+    BEGIN
+        UPDATE statystyki_sprzedazy
+        SET
+            srednia_popularnosc = @Srednia,
+            poziom_oceny = @Ocena,
+            ostatnia_aktualizacja = GETDATE()
+        WHERE tytul = @Tytul;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO statystyki_sprzedazy (tytul, srednia_popularnosc, poziom_oceny)
+        VALUES (@Tytul, @Srednia, @Ocena);
+    END
+END;
+GO
