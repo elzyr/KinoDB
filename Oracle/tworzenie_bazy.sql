@@ -4,6 +4,8 @@ BEGIN
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Sala_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Film_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP TABLE Kategoria_table CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP TABLE Kategoria_stg CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP TABLE Film_stg CASCADE CONSTRAINTS'; EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE kategoria_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
     BEGIN EXECUTE IMMEDIATE 'DROP SEQUENCE sala_seq'; EXCEPTION WHEN OTHERS THEN NULL; END;
@@ -31,8 +33,22 @@ CREATE SEQUENCE miejsce_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE film_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE repertuar_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE rezerwacja_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE kategoria_stg_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE film_stg_seq      START WITH 1 INCREMENT BY 1;
 
--- Typy obiektowe
+CREATE TABLE Kategoria_stg (
+  kategoria_id   NUMBER PRIMARY KEY,
+  nazwa          VARCHAR2(100)
+);
+CREATE TABLE Film_stg (
+  film_id        NUMBER PRIMARY KEY,
+  tytul          VARCHAR2(200),
+  czas_trwania   NUMBER,
+  minimalny_wiek NUMBER,
+  kategoria_id   NUMBER,
+  czy_wycofany   NUMBER
+);
+
 CREATE OR REPLACE TYPE Kategoria AS OBJECT (
     kategoria_id NUMBER,
     nazwa VARCHAR2(100)
@@ -182,6 +198,73 @@ BEFORE INSERT ON Rezerwacja_table
 FOR EACH ROW
 BEGIN
     :NEW.rezerwacja_id := rezerwacja_seq.NEXTVAL;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_kategoria_stg_dml
+AFTER INSERT OR UPDATE OR DELETE ON Kategoria_stg
+FOR EACH ROW
+BEGIN
+  IF INSERTING THEN
+    INSERT INTO Kategoria_table
+    VALUES (
+      Kategoria(
+        :NEW.kategoria_id,
+        :NEW.nazwa
+      )
+    );
+  ELSIF UPDATING THEN
+    UPDATE Kategoria_table k
+       SET k.nazwa = :NEW.nazwa
+     WHERE k.kategoria_id = :OLD.kategoria_id;
+  ELSIF DELETING THEN
+    DELETE FROM Kategoria_table k
+     WHERE k.kategoria_id = :OLD.kategoria_id;
+  END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER trg_film_stg_dml
+AFTER INSERT OR UPDATE OR DELETE ON Film_stg
+FOR EACH ROW
+DECLARE
+  v_k_ref REF Kategoria;
+BEGIN
+  IF INSERTING THEN
+    SELECT REF(k) 
+      INTO v_k_ref
+      FROM Kategoria_table k
+     WHERE k.kategoria_id = :NEW.kategoria_id;
+    INSERT INTO Film_table
+    VALUES (
+      Film(
+        :NEW.film_id,
+        :NEW.tytul,
+        :NEW.czas_trwania,
+        :NEW.minimalny_wiek,
+        v_k_ref,
+        :NEW.czy_wycofany
+      )
+    );
+    
+  ELSIF UPDATING THEN
+    SELECT REF(k) 
+      INTO v_k_ref
+      FROM Kategoria_table k
+     WHERE k.kategoria_id = :NEW.kategoria_id;
+
+    UPDATE Film_table f
+       SET f.tytul          = :NEW.tytul,
+           f.czas_trwania   = :NEW.czas_trwania,
+           f.minimalny_wiek = :NEW.minimalny_wiek,
+           f.kategoria_ref  = v_k_ref,
+           f.czy_wycofany    = :NEW.czy_wycofany
+     WHERE f.film_id = :OLD.film_id;
+
+  ELSIF DELETING THEN
+    DELETE FROM Film_table f
+     WHERE f.film_id = :OLD.film_id;
+  END IF;
 END;
 /
 
