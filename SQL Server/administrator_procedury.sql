@@ -1,216 +1,75 @@
 ﻿USE KinoDB;
 GO
 
-CREATE OR ALTER PROCEDURE Admin_DodajUzytkownika
- @Imie NVARCHAR(50),
- @Nazwisko NVARCHAR(50),
- @DataUrodzenia DATE,
- @Email NVARCHAR(100),
- @Rola NVARCHAR(20)
-AS
-BEGIN
- SET NOCOUNT ON;
- SET XACT_ABORT ON;
-
- BEGIN TRY
-  BEGIN TRAN;
-
-  INSERT INTO dbo.Uzytkownicy (Imie, Nazwisko, data_urodzenia, Email, rola)
-  OUTPUT inserted.user_id AS NowyUzytkownikID
-  VALUES (@Imie, @Nazwisko, @DataUrodzenia, @Email, @Rola);
-
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF @@TRANCOUNT > 0 ROLLBACK;
-  THROW;
- END CATCH
-END;
-GO
-
 CREATE OR ALTER PROCEDURE Admin_UsunUzytkownika
- @Email NVARCHAR(100)
+	@Email NVARCHAR(100)
 AS
 BEGIN
- SET NOCOUNT ON;
- SET XACT_ABORT ON;
+	DELETE FROM dbo.Uzytkownicy
+	WHERE Email = @Email;
 
- BEGIN TRY
-  BEGIN TRAN;
-
-  DELETE FROM dbo.Uzytkownicy
-  WHERE Email = @Email;
-
-  IF @@ROWCOUNT = 0
-  BEGIN
-   RAISERROR('Nie znaleziono użytkownika o podanym adresie e-mail: %s.', 16, 1, @Email);
-  END
-
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF @@TRANCOUNT > 0 ROLLBACK;
-  THROW;
- END CATCH
+	IF @@ROWCOUNT = 0
+	BEGIN
+	RAISERROR('Nie znaleziono użytkownika o podanym adresie e-mail: %s.', 16, 1, @Email);
+	END
 END;
 GO
 
 CREATE OR ALTER PROCEDURE Admin_DodajKategorie
- @Nazwa NVARCHAR(100)
+	@Nazwa NVARCHAR(100)
 AS
 BEGIN
- SET NOCOUNT ON;
- SET XACT_ABORT ON;
-
- BEGIN TRY
-  BEGIN TRAN;
-
-  INSERT INTO dbo.Kategorie (nazwa)
-  OUTPUT inserted.kategoria_id AS NowaKategoriaID
-  VALUES (@Nazwa);
-
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF @@TRANCOUNT > 0 ROLLBACK;
-  THROW;
- END CATCH
+	INSERT INTO dbo.Kategorie (nazwa)
+	VALUES (@Nazwa);
 END;
 GO
 
 CREATE OR ALTER PROCEDURE Admin_UsunKategorie
- @KategoriaID INT
+	@KategoriaID INT
 AS
 BEGIN
- SET NOCOUNT ON;
- SET XACT_ABORT ON;
-
- BEGIN TRY
-  BEGIN TRAN;
-
-  DELETE FROM dbo.Kategorie
-  WHERE kategoria_id = @KategoriaID;
-
-  IF @@ROWCOUNT = 0
-  BEGIN
-   RAISERROR('Nie znaleziono kategorii o podanym ID: %d.', 16, 1, @KategoriaID);
-  END
-
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF @@TRANCOUNT > 0 ROLLBACK;
-  THROW;
- END CATCH
+	DELETE FROM dbo.Kategorie
+	WHERE kategoria_id = @KategoriaID;
 END;
 GO
 
 CREATE OR ALTER PROCEDURE Admin_DodajFilm
- @Tytul NVARCHAR(200),
- @MinimalnyWiek INT,
- @CzasTrwania INT,
- @KategoriaID INT
+	@Tytul NVARCHAR(200),
+	@MinimalnyWiek INT,
+	@CzasTrwania INT,
+	@KategoriaID INT
 AS
 BEGIN
- SET NOCOUNT ON;
- SET XACT_ABORT ON;
-
- BEGIN TRY
-  BEGIN TRAN;
-
-  INSERT INTO dbo.Filmy (Tytul, minimalny_wiek, Czas_trwania, kategoria_id)
-  OUTPUT inserted.film_id AS NowyFilmID
-  VALUES (@Tytul, @MinimalnyWiek, @CzasTrwania, @KategoriaID);
-
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF @@TRANCOUNT > 0 ROLLBACK;
-  THROW;
- END CATCH
+	INSERT INTO dbo.Filmy (Tytul, minimalny_wiek, Czas_trwania, kategoria_id)
+	OUTPUT inserted.film_id AS NowyFilmID
+	VALUES (@Tytul, @MinimalnyWiek, @CzasTrwania, @KategoriaID);
 END;
 GO
 
 CREATE OR ALTER PROCEDURE Admin_UsunFilm
- @FilmID INT
+	@FilmID INT
 AS
 BEGIN
- SET NOCOUNT ON;
- SET XACT_ABORT ON;
-
- BEGIN TRY
-  BEGIN TRAN;
-
-  DELETE FROM dbo.Filmy
-  WHERE film_id = @FilmID;
-
-  IF @@ROWCOUNT = 0
-  BEGIN
-   RAISERROR('Nie znaleziono filmu o podanym ID: %d.', 16, 1, @FilmID);
-  END
-
-  COMMIT;
- END TRY
- BEGIN CATCH
-  IF @@TRANCOUNT > 0 ROLLBACK;
-  THROW;
- END CATCH
+	DELETE FROM dbo.Filmy
+	WHERE film_id = @FilmID;
 END;
 GO
 
 CREATE OR ALTER VIEW Admin_PopularnoscFilmow AS
- SELECT *
- FROM OPENQUERY(kinolodz,
-  'SELECT
-     tytul,
-     tyg_start      AS PoczatekTygodnia,
-     tyg_koniec     AS KoniecTygodnia,
-     proc_zapelnienia AS ProcZapelnienia
-   FROM vw_popularnosc_filmow'
- );
+	SELECT *
+	FROM OPENQUERY(kinolodz,
+	'SELECT tytul,
+	tyg_start AS PoczatekTygodnia,
+	tyg_koniec AS KoniecTygodnia,
+	proc_zapelnienia AS ProcZapelnienia
+	FROM vw_popularnosc_filmow'
+	);
 GO
-
-
-
-
-CREATE OR ALTER PROCEDURE Admin_Statystyki_do_pliku
-    @Miesiac INT,
-    @Rok     INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @sql NVARCHAR(MAX);
-    DECLARE @plik NVARCHAR(200) = 'C:\Temp\statystyki.xlsx';
-
-    SET @sql = '
-    INSERT INTO OPENROWSET(
-        ''Microsoft.ACE.OLEDB.12.0'',
-        ''Excel 12.0 Xml;HDR=YES;Database=' + @plik + ''',
-        ''SELECT tytul, LiczbaRezerwacji, ProcZapelnienia FROM [Arkusz1$]'')
-    SELECT
-        tytul,
-        COUNT(*) AS LiczbaRezerwacji,
-        CAST(AVG(ProcZapelnienia) AS DECIMAL(5,2)) AS ProcZapelnienia
-    FROM Admin_PopularnoscFilmow
-    WHERE MONTH(PoczatekTygodnia) = ' + CAST(@Miesiac AS NVARCHAR) + '
-      AND YEAR(PoczatekTygodnia) = ' + CAST(@Rok AS NVARCHAR) + '
-    GROUP BY tytul;
-    ';
-
-    EXEC sp_executesql @sql;
-END;
-GO
-
-
 
 CREATE OR ALTER PROCEDURE Admin_AktualizujStatystykiSprzedazy
-    @Tytul NVARCHAR(200)
+	@Tytul NVARCHAR(200)
 AS
 BEGIN
-    SET NOCOUNT ON;
-    SET XACT_ABORT ON;
-
     DECLARE 
         @Srednia DECIMAL(5,2),
         @Ocena NVARCHAR(50);
@@ -249,9 +108,56 @@ BEGIN
 END;
 GO
 
-use KinoDB;
-go
+CREATE OR ALTER PROCEDURE admin_DodajKategorie
+    @Nazwa NVARCHAR(100)
+AS
+BEGIN
+	BEGIN TRAN;
 
+	INSERT INTO dbo.Kategorie(nazwa)
+	VALUES (@Nazwa);
+	EXEC (
+		N'BEGIN
+			Admin_Pkg.dodaj_kategorie(?);
+		END;',
+		@Nazwa
+	) AT kinolodz;
+
+	COMMIT;
+END;
+GO
+
+
+
+USE KinoDB;
+GO
+CREATE OR ALTER PROCEDURE admin_DodajFilm
+    @Tytul NVARCHAR(200),
+    @CzasTrwania    INT,
+    @MinimalnyWiek  INT,
+    @IdKategorii    INT
+AS
+BEGIN
+	BEGIN TRAN;
+	INSERT INTO dbo.Filmy
+			(tytul, czas_trwania, minimalny_wiek, kategoria_id, czy_wycofany)
+	VALUES(@Tytul, @CzasTrwania, @MinimalnyWiek, @IdKategorii, 0);
+	EXEC (
+		N'BEGIN
+			Admin_Pkg.dodaj_film(?,?,?,?);
+		END;',
+		@Tytul,
+		@CzasTrwania,
+		@MinimalnyWiek,
+		@IdKategorii
+	) AT kinolodz;
+
+	COMMIT;
+END;
+GO
+
+
+-- niepotrzebne
 CREATE OR ALTER PROCEDURE Admin_DodajFilmRozproszony
     @Tytul NVARCHAR(200),
     @MinimalnyWiek INT,
