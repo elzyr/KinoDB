@@ -100,16 +100,17 @@ BEGIN
 END;
 GO
 
+
 CREATE OR ALTER VIEW klient_PokazSeanse AS
- SELECT
-  tytul,
-  data_rozpoczecia,
-  wolne_miejsca
- FROM OPENQUERY(
-  kinolodz,
-  'SELECT tytul, data_rozpoczecia, wolne_miejsca
-   FROM SCOTT.vw_seanse'
- );
+SELECT
+    tytul,
+    data_rozpoczecia,
+    wolne_miejsca
+FROM OPENROWSET(
+    'OraOLEDB.Oracle',
+    'Data Source=(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SERVICE_NAME=pd19c)));User ID=SCOTT;Password=12345;',
+    'SELECT tytul, data_rozpoczecia, wolne_miejsca FROM SCOTT.vw_seanse'
+);
 GO
 
 CREATE OR ALTER VIEW klient_PokazRezerwacje AS
