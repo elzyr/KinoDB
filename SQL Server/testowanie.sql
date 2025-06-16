@@ -1,6 +1,10 @@
 ﻿USE KinoDB;
 GO
 
+insert into Kategorie (nazwa) values ('Horror');
+
+insert into Filmy (Tytul,minimalny_wiek,Czas_trwania,kategoria_id) values ('Fajny film','18',120,1);
+
 INSERT INTO Uzytkownicy
  (imie, nazwisko, data_urodzenia, email, rola)
 VALUES

@@ -3,7 +3,6 @@ GO
 
 IF DB_ID(N'KinoDB') IS NOT NULL
 BEGIN
-    ALTER DATABASE KinoDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
     DROP DATABASE KinoDB;
 END
 GO
@@ -32,10 +31,11 @@ CREATE TABLE Filmy (
     kategoria_id INT NOT NULL
       CONSTRAINT FK_Filmy_Kategorie FOREIGN KEY (kategoria_id)
         REFERENCES dbo.Kategorie(kategoria_id),
-    czy_wycofany BIT NOT NULL DEFAULT(0)
+    czy_wycofany INT NOT NULL DEFAULT(0)
       CONSTRAINT CK_Filmy_czy_wycofany CHECK (czy_wycofany IN (0,1))
 );
 GO
+
 
 CREATE TABLE Kina (
     kino_id INT IDENTITY(1,1) PRIMARY KEY,
@@ -56,7 +56,6 @@ CREATE TABLE statystyki_sprzedazy (
     popularnosc INT NOT NULL DEFAULT(0)
       CONSTRAINT CK_Sprzedazy_popularnosc CHECK (popularnosc >= 0)
 );
-GO
 
 CREATE TABLE Uzytkownicy (
     user_id INT IDENTITY(1,1) PRIMARY KEY,
