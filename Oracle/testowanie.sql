@@ -22,7 +22,6 @@ BEGIN
 -- INSERT INTO Uzytkownik_table VALUES (
 --  Uzytkownik(NULL, 'Zbigniew', 'Szczupak', TO_DATE('2000-01-31', 'YYYY-MM-DD'), 'zbigniew@test.pl', 'premium')
 -- );
-commit;
 END;
 /
 

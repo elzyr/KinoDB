@@ -2,7 +2,7 @@ USE KinoDB;
 GO
 
 CREATE OR ALTER PROCEDURE klient_ZarezerwujSeans
- @UserId INT,
+ @Email NVARCHAR(100),
  @TytulFilmu NVARCHAR(200),
  @DataSeansu DATETIME,
  @PreferencjaRzad INT,
@@ -11,22 +11,24 @@ AS
 BEGIN
  SET NOCOUNT ON;
 
+ DECLARE @UserId INT;
  DECLARE @rabat DECIMAL(3,2);
 
- SELECT @rabat = CASE WHEN rola = N'premium' THEN 0.9 ELSE 1.0 END
+ SELECT 
+   @UserId = user_id,
+   @rabat = CASE WHEN rola = N'premium' THEN 0.9 ELSE 1.0 END
  FROM dbo.Uzytkownicy
- WHERE user_id = @UserId;
+ WHERE email = @Email;
 
- IF @rabat IS NULL
+ IF @UserId IS NULL
  BEGIN
-  THROW 50000, N'Nieprawid³owe ID u¿ytkownika.', 1;
+  THROW 50000, N'Nieprawid³owy adres e-mail u¿ytkownika.', 1;
   RETURN;
  END
 
  EXEC (
   N'BEGIN
     Klient_Pkg.Zarezerwuj_Seans(?,?,?,?,?,?);
-    COMMIT;
   END;',
   @UserId,
   @TytulFilmu,
@@ -35,31 +37,45 @@ BEGIN
   @IloscMiejsc,
   @rabat
  ) AT kinolodz;
+
  EXEC Admin_AktualizujStatystykiSprzedazy @TytulFilmu;
 END;
-
 GO
 
+
 CREATE OR ALTER PROCEDURE klient_AnulujRezerwacje
- @UserId INT,
+ @Email NVARCHAR(100),
  @TytulFilmu NVARCHAR(200),
  @DataSeansu DATETIME
 AS
 BEGIN
  SET NOCOUNT ON;
 
+ DECLARE @UserId INT;
+
+ SELECT @UserId = user_id
+ FROM dbo.Uzytkownicy
+ WHERE email = @Email;
+
+ IF @UserId IS NULL
+ BEGIN
+  THROW 50000, N'Nieprawid³owy adres e-mail u¿ytkownika.', 1;
+  RETURN;
+ END
+
  EXEC (
   N'BEGIN
     Klient_Pkg.Anuluj_Rezerwacje(?,?,?);
-    COMMIT;
   END;',
   @UserId,
   @TytulFilmu,
   @DataSeansu
  ) AT kinolodz;
+
  EXEC Admin_AktualizujStatystykiSprzedazy @TytulFilmu;
 END;
 GO
+
 
 CREATE OR ALTER VIEW klient_PokazSeanse AS
  SELECT

@@ -1,9 +1,9 @@
 USE master;
 GO
-IF DB_ID(N'KinoDB') IS NOT NULL
-BEGIN
-    DROP DATABASE KinoDB;
-END
+
+ALTER DATABASE kinodb SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+GO
+DROP DATABASE kinodb;
 GO
 
 CREATE DATABASE KinoDB;
@@ -11,7 +11,6 @@ GO
 
 USE KinoDB;
 GO
-
 
 CREATE TABLE Kategorie (
     kategoria_id INT IDENTITY(1,1) PRIMARY KEY,
@@ -34,7 +33,6 @@ CREATE TABLE Filmy (
       CONSTRAINT CK_Filmy_czy_wycofany CHECK (czy_wycofany IN (0,1))
 );
 GO
-
 
 CREATE TABLE Kina (
     kino_id INT IDENTITY(1,1) PRIMARY KEY,

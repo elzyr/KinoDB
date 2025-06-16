@@ -5,34 +5,36 @@ insert into Kategorie (nazwa) values ('Horror');
 
 insert into Filmy (Tytul,minimalny_wiek,Czas_trwania,kategoria_id) values ('Fajny film','18',120,1);
 
-INSERT INTO Uzytkownicy
- (imie, nazwisko, data_urodzenia, email, rola)
-VALUES
- (N'Jan', N'Kowalski', '2000-05-22', N'jan.k@example.com', N'premium');
-GO
-
 SELECT * FROM klient_PokazSeanse;
 GO
 
-EXEC klient_ZarezerwujSeans
- @UserId          = 1,
- @TytulFilmu      = N'The Conjuring',
- @DataSeansu      = '2026-01-02 10:00',
- @PreferencjaRzad = 3,
- @IloscMiejsc     = 10;
-GO
+BEGIN DISTRIBUTED TRANSACTION
 
-SELECT * FROM klient_PokazRezerwacje;
-GO
+	INSERT INTO Uzytkownicy
+	 (imie, nazwisko, data_urodzenia, email, rola)
+	VALUES
+	 (N'Jan', N'Kowalski', '2000-05-22', N'jan.k@example.com', N'premium');
 
-EXEC klient_AnulujRezerwacje
- @UserId     = 1,
- @TytulFilmu = N'The Conjuring',
- @DataSeansu = '2026-01-02 10:00';
-GO
+	EXEC klient_ZarezerwujSeans
+	@Email = N'jan.k@example.com',
+	@TytulFilmu = N'The Conjuring',
+	@DataSeansu = '2026-01-02 10:00',
+	@PreferencjaRzad = 3,
+	@IloscMiejsc = 10;
 
-SELECT * FROM klient_PokazRezerwacje;
-GO
+	SELECT * FROM klient_PokazRezerwacje;
+
+
+	EXEC klient_AnulujRezerwacje
+	@Email = N'jan.k@example.com',
+	@TytulFilmu = N'The Conjuring',
+	@DataSeansu = '2026-01-02 10:00';
+
+	SELECT * FROM klient_PokazRezerwacje;
+
+	EXEC Admin_UsunUzytkownika @Email = N'jan.k@example.com';
+
+COMMIT TRANSACTION;
 
 SELECT *
 FROM Admin_PopularnoscFilmow

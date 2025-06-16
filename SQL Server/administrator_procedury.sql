@@ -29,7 +29,7 @@ END;
 GO
 
 CREATE OR ALTER PROCEDURE Admin_UsunUzytkownika
- @UzytkownikID INT
+ @Email NVARCHAR(100)
 AS
 BEGIN
  SET NOCOUNT ON;
@@ -39,11 +39,11 @@ BEGIN
   BEGIN TRAN;
 
   DELETE FROM dbo.Uzytkownicy
-  WHERE user_id = @UzytkownikID;
+  WHERE Email = @Email;
 
   IF @@ROWCOUNT = 0
   BEGIN
-   RAISERROR('Nie znaleziono użytkownika o podanym ID: %d.', 16, 1, @UzytkownikID);
+   RAISERROR('Nie znaleziono użytkownika o podanym adresie e-mail: %s.', 16, 1, @Email);
   END
 
   COMMIT;
