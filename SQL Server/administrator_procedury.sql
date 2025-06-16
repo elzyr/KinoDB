@@ -248,3 +248,52 @@ BEGIN
     END
 END;
 GO
+
+use KinoDB;
+go
+
+CREATE OR ALTER PROCEDURE Admin_DodajFilmRozproszony
+    @Tytul NVARCHAR(200),
+    @MinimalnyWiek INT,
+    @CzasTrwania INT,
+    @NazwaKategorii NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        EXEC dbo.Admin_DodajKategorie @Nazwa = @NazwaKategorii;
+
+        DECLARE @KategoriaID INT;
+        SELECT @KategoriaID = kategoria_id 
+        FROM dbo.Kategorie 
+        WHERE nazwa = @NazwaKategorii;
+
+        EXEC dbo.Admin_DodajFilm 
+            @Tytul = @Tytul,
+            @MinimalnyWiek = @MinimalnyWiek,
+            @CzasTrwania = @CzasTrwania,
+            @KategoriaID = @KategoriaID;
+
+        DECLARE @sql1 NVARCHAR(MAX), @sql2 NVARCHAR(MAX);
+
+        SET @sql1 = 
+            'BEGIN SCOTT.Admin_Pkg.DodajKategorie(''' + @NazwaKategorii + '''); END;';
+        EXEC (@sql1) AT kinolodz;
+
+        SET @sql2 =
+            'BEGIN SCOTT.Admin_Pkg.DodajFilm(''' + @Tytul + ''', ' + 
+            CONVERT(NVARCHAR, @MinimalnyWiek) + ', ' + 
+            CONVERT(NVARCHAR, @CzasTrwania) + ', ''' + 
+            @NazwaKategorii + '''); END;';
+        EXEC (@sql2) AT kinolodz;
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        THROW;
+    END CATCH
+END;
