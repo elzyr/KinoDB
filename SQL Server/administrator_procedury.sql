@@ -203,3 +203,100 @@ BEGIN
         THROW;
     END CATCH
 END;
+
+
+
+CREATE OR ALTER VIEW Admin_PopularnoscFilmow AS
+ SELECT *
+ FROM OPENQUERY(kinolodz,
+  'SELECT
+	film_id,
+     tytul,
+     tyg_start      AS PoczatekTygodnia,
+     tyg_koniec     AS KoniecTygodnia,
+     proc_zapelnienia AS ProcZapelnienia
+   FROM vw_popularnosc_filmow'
+ );
+GO
+
+
+
+
+CREATE OR ALTER PROCEDURE Admin_Statystyki_do_pliku
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @sql NVARCHAR(MAX);
+    DECLARE @plik NVARCHAR(200) = 'C:\Temp\statystyki.xlsx';
+
+    SET @sql = '
+    INSERT INTO OPENROWSET(
+        ''Microsoft.ACE.OLEDB.12.0'',
+        ''Excel 12.0 Xml;HDR=YES;Database=' + @plik + ''',
+        ''SELECT film_id, tytul, srednia_popularnosc, poziom_oceny, ostatnia_aktualizacja FROM [Arkusz1$]'')
+    SELECT
+        film_id,
+        tytul,
+        srednia_popularnosc,
+        poziom_oceny,
+        ostatnia_aktualizacja
+    FROM statystyki_sprzedazy;
+    ';
+
+    EXEC sp_executesql @sql;
+END;
+GO
+
+
+
+CREATE OR ALTER PROCEDURE Admin_AktualizujStatystykiSprzedazy
+    @Tytul NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE 
+        @Srednia DECIMAL(5,2),
+        @Ocena NVARCHAR(50),
+        @FilmID INT;
+
+    SELECT 
+        @FilmID = film_id,
+        @Srednia = AVG(ProcZapelnienia)
+    FROM Admin_PopularnoscFilmow
+    WHERE tytul = @Tytul
+    GROUP BY film_id;
+
+    IF @Srednia IS NULL OR @FilmID IS NULL
+    BEGIN
+        RAISERROR('Brak danych popularności dla filmu: %s', 16, 1, @Tytul);
+        RETURN;
+    END
+
+    SET @Ocena = CASE 
+        WHEN @Srednia < 20 THEN 'Słaba sprzedaż'
+        WHEN @Srednia < 50 THEN 'Umiarkowana sprzedaż'
+        WHEN @Srednia < 80 THEN 'Dobra sprzedaż'
+        ELSE 'Bardzo dobra sprzedaż'
+    END;
+
+    IF EXISTS (SELECT 1 FROM statystyki_sprzedazy WHERE film_id = @FilmID)
+    BEGIN
+        UPDATE statystyki_sprzedazy
+        SET
+            srednia_popularnosc = @Srednia,
+            poziom_oceny = @Ocena,
+            ostatnia_aktualizacja = GETDATE()
+        WHERE film_id = @FilmID;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO statystyki_sprzedazy (film_id, tytul, srednia_popularnosc, poziom_oceny)
+        VALUES (@FilmID, @Tytul, @Srednia, @Ocena);
+    END
+END;
+GO
+
+

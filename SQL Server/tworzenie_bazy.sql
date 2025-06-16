@@ -79,6 +79,8 @@ GO
 
 CREATE TABLE statystyki_sprzedazy (
     stat_id INT IDENTITY(1,1) PRIMARY KEY,
+    film_id INT NOT NULL
+        CONSTRAINT FK_stat_film FOREIGN KEY REFERENCES Filmy(film_id),
     tytul NVARCHAR(200) NOT NULL,
     srednia_popularnosc DECIMAL(5,2) NOT NULL,
     poziom_oceny NVARCHAR(50) NOT NULL,

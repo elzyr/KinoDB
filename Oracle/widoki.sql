@@ -30,38 +30,39 @@ CREATE OR REPLACE VIEW vw_seanse AS
 /
 
 CREATE OR REPLACE VIEW vw_popularnosc_filmow AS
- WITH miejsca_seans AS (
+WITH miejsca_seans AS (
   SELECT
-   r.repertuar_id,
-   COUNT(*) AS seats_total
+    r.repertuar_id,
+    COUNT(*) AS seats_total
   FROM Repertuar_table r
   JOIN Sala_table s ON r.sala_ref = REF(s)
   CROSS JOIN TABLE(s.miejsca) m
   GROUP BY r.repertuar_id
- ),
- bilety_seans AS (
+),
+bilety_seans AS (
   SELECT
-   rez.repertuar_ref.repertuar_id AS repertuar_id,
-   COUNT(*) AS seats_taken
+    rez.repertuar_ref.repertuar_id AS repertuar_id,
+    COUNT(*) AS seats_taken
   FROM Rezerwacja_table rez
   JOIN TABLE(rez.bilety) b ON 1=1
   WHERE rez.czy_anulowane = 0
   GROUP BY rez.repertuar_ref.repertuar_id
- )
- SELECT
+)
+SELECT
+  f.film_id,
   f.tytul,
   TRUNC(r.data_rozpoczecia, 'IW') AS tyg_start,
   TRUNC(r.data_rozpoczecia, 'IW') + 6 AS tyg_koniec,
   ROUND(
-   NVL(SUM(bt.seats_taken), 0)
-   / NULLIF(SUM(mt.seats_total), 0) * 100,
-   2
+    NVL(SUM(bt.seats_taken), 0) / NULLIF(SUM(mt.seats_total), 0) * 100,
+    2
   ) AS proc_zapelnienia
- FROM Repertuar_table r
- JOIN Film_table f ON r.film_ref = REF(f)
- JOIN miejsca_seans mt ON mt.repertuar_id = r.repertuar_id
- LEFT JOIN bilety_seans bt ON bt.repertuar_id = r.repertuar_id
- GROUP BY
+FROM Repertuar_table r
+JOIN Film_table f ON r.film_ref = REF(f)
+JOIN miejsca_seans mt ON mt.repertuar_id = r.repertuar_id
+LEFT JOIN bilety_seans bt ON bt.repertuar_id = r.repertuar_id
+GROUP BY
+  f.film_id,
   f.tytul,
-  TRUNC(r.data_rozpoczecia, 'IW')
-/
+  TRUNC(r.data_rozpoczecia, 'IW');
+
