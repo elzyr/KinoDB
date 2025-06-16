@@ -1,4 +1,31 @@
-USE KinoDB;
+ï»¿USE KinoDB;
+GO
+
+CREATE OR ALTER PROCEDURE klient_DodajUzytkownika
+ @Imie NVARCHAR(50),
+ @Nazwisko NVARCHAR(50),
+ @DataUrodzenia DATE,
+ @Email NVARCHAR(100),
+ @Rola NVARCHAR(20)
+AS
+BEGIN
+ SET NOCOUNT ON;
+ SET XACT_ABORT ON;
+
+ BEGIN TRY
+  BEGIN TRAN;
+
+  INSERT INTO dbo.Uzytkownicy (Imie, Nazwisko, data_urodzenia, Email, rola)
+  OUTPUT inserted.user_id AS NowyUzytkownikID
+  VALUES (@Imie, @Nazwisko, @DataUrodzenia, @Email, @Rola);
+
+  COMMIT;
+ END TRY
+ BEGIN CATCH
+  IF @@TRANCOUNT > 0 ROLLBACK;
+  THROW;
+ END CATCH
+END;
 GO
 
 CREATE OR ALTER PROCEDURE klient_ZarezerwujSeans
@@ -22,7 +49,7 @@ BEGIN
 
  IF @UserId IS NULL
  BEGIN
-  THROW 50000, N'Nieprawid³owy adres e-mail u¿ytkownika.', 1;
+  THROW 50000, N'Nieprawidlowy adres e-mail uzytkownika.', 1;
   RETURN;
  END
 
@@ -42,7 +69,6 @@ BEGIN
 END;
 GO
 
-
 CREATE OR ALTER PROCEDURE klient_AnulujRezerwacje
  @Email NVARCHAR(100),
  @TytulFilmu NVARCHAR(200),
@@ -59,7 +85,7 @@ BEGIN
 
  IF @UserId IS NULL
  BEGIN
-  THROW 50000, N'Nieprawid³owy adres e-mail u¿ytkownika.', 1;
+  THROW 50000, N'Nieprawidlowy adres e-mail uzytkownika.', 1;
   RETURN;
  END
 
@@ -71,11 +97,8 @@ BEGIN
   @TytulFilmu,
   @DataSeansu
  ) AT kinolodz;
-
- EXEC Admin_AktualizujStatystykiSprzedazy @TytulFilmu;
 END;
 GO
-
 
 CREATE OR ALTER VIEW klient_PokazSeanse AS
  SELECT

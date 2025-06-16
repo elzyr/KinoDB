@@ -1,17 +1,54 @@
 USE master;
 GO
-
 ALTER DATABASE kinodb SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 GO
 DROP DATABASE kinodb;
-GO
 
 CREATE DATABASE KinoDB;
 GO
 
 USE KinoDB;
 GO
+-- Usuñ u¿ytkownika z bazy danych
+DROP USER IF EXISTS adminKinoDB;
+DROP USER IF EXISTS userKinoDB;
+GO
 
+
+CREATE LOGIN adminKinoDB WITH PASSWORD = 'admin123!';
+CREATE LOGIN userKinoDB WITH PASSWORD = 'user123!';
+
+USE KinoDB;
+GO
+CREATE USER adminKinoDB FOR LOGIN adminKinoDB;
+CREATE USER userKinoDB FOR LOGIN userKinoDB;
+
+CREATE ROLE RolaAdmin;
+CREATE ROLE RolaUzytkownik;
+
+-- ADMIN
+GRANT EXECUTE ON dbo.Admin_UsunUzytkownika TO RolaAdmin;
+GRANT EXECUTE ON dbo.Admin_DodajKategorie TO RolaAdmin;
+GRANT EXECUTE ON dbo.Admin_UsunKategorie TO RolaAdmin;
+GRANT EXECUTE ON dbo.Admin_DodajFilm TO RolaAdmin;
+GRANT EXECUTE ON dbo.Admin_UsunFilm TO RolaAdmin;
+GRANT EXECUTE ON dbo.Admin_Statystyki_do_pliku TO RolaAdmin;
+GRANT EXECUTE ON dbo.Admin_AktualizujStatystykiSprzedazy TO RolaAdmin;
+GRANT SELECT  ON dbo.Admin_PopularnoscFilmow TO RolaAdmin;
+
+GRANT EXECUTE ON dbo.klient_ZarezerwujSeans TO RolaUzytkownik;
+GRANT EXECUTE ON dbo.klient_AnulujRezerwacje TO RolaUzytkownik;
+GRANT SELECT  ON dbo.klient_PokazSeanse TO RolaUzytkownik;
+GRANT SELECT  ON dbo.klient_PokazRezerwacje TO RolaUzytkownik;
+GRANT INSERT  ON dbo.Uzytkownicy TO RolaUzytkownik;
+GO
+
+-- Dodanie u¿ytkowników do ról
+ALTER ROLE RolaAdmin ADD MEMBER adminKinoDB;
+ALTER ROLE RolaUzytkownik ADD MEMBER userKinoDB;
+GO
+
+use kinodb;
 CREATE TABLE Kategorie (
     kategoria_id INT IDENTITY(1,1) PRIMARY KEY,
     nazwa NVARCHAR(100) NOT NULL
@@ -47,6 +84,7 @@ CREATE TABLE statystyki_sprzedazy (
     poziom_oceny NVARCHAR(50) NOT NULL,
     ostatnia_aktualizacja DATETIME NOT NULL DEFAULT GETDATE()
 );
+GO
 
 
 CREATE TABLE Uzytkownicy (
@@ -60,3 +98,5 @@ CREATE TABLE Uzytkownicy (
       CONSTRAINT CK_Uzytkownicy_rola CHECK (rola IN ('standard','premium'))
 );
 GO
+
+
