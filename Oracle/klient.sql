@@ -44,21 +44,31 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         current_bilet_id NUMBER      := 0;
         cnt NUMBER;
     BEGIN
-            SELECT COUNT(*) INTO cnt
-        FROM Rezerwacja_table
-        WHERE uzytkownik = p_user_id
-          AND repertuar_ref = (
-                SELECT REF(r)
-                FROM Repertuar_table r
-                JOIN Film_table f ON f.film_id = DEREF(r.film_ref).film_id
-                WHERE f.tytul = p_tytul_filmu
-                  AND r.data_rozpoczecia = p_data_seansu_in
-             )
-          AND czy_anulowane = 0;
-        
-        IF cnt > 0 THEN
-            RAISE_APPLICATION_ERROR(-20020, 'U¿ytkownik ju¿ zarezerwowa³ ten seans.');
-        END IF;
+           /* 1. Pobierz seans i salê */
+SELECT r.repertuar_id,
+       DEREF(r.sala_ref).sala_id,
+       REF(r)
+INTO   id_seansu,
+       id_sali,
+       ref_repertuar
+FROM   Repertuar_table r
+JOIN   Film_table f
+       ON f.film_id = DEREF(r.film_ref).film_id
+WHERE  f.tytul          = p_tytul_filmu
+  AND  r.data_rozpoczecia = p_data_seansu_in;
+
+/* 2. SprawdŸ, czy u¿ytkownik ju¿ zarezerwowa³ */
+SELECT COUNT(*)
+INTO   cnt
+FROM   Rezerwacja_table
+WHERE  uzytkownik    = p_user_id
+  AND  repertuar_ref = ref_repertuar   -- ? u¿ywamy zmiennej
+  AND  czy_anulowane = 0;
+
+IF cnt > 0 THEN
+   RAISE_APPLICATION_ERROR(-20020,
+     'U¿ytkownik ju¿ zarezerwowa³ ten seans.');
+END IF;
         
         SELECT r.repertuar_id,
                DEREF(r.sala_ref).sala_id,
