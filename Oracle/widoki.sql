@@ -14,7 +14,7 @@ CREATE OR REPLACE VIEW v_rezerwacje AS
  WHERE r.czy_anulowane = 0
 /
 
-CREATE OR REPLACE VIEW vw_seanse AS
+CREATE OR REPLACE VIEW v_seanse AS
  SELECT
   f.tytul AS tytul,
   r.data_rozpoczecia AS data_rozpoczecia,
@@ -29,7 +29,7 @@ CREATE OR REPLACE VIEW vw_seanse AS
   r.data_rozpoczecia
 /
 
-CREATE OR REPLACE VIEW vw_popularnosc_filmow AS
+CREATE OR REPLACE VIEW v_popularnosc_filmow AS
 WITH miejsca_seans AS (
   SELECT
     r.repertuar_id,
@@ -65,11 +65,6 @@ GROUP BY
   f.film_id,
   f.tytul,
   TRUNC(r.data_rozpoczecia, 'IW');
-
-
-
-
-
 
 -- uzytkownicy i role
 
