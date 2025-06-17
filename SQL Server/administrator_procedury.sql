@@ -62,7 +62,7 @@ CREATE OR ALTER VIEW Admin_PopularnoscFilmow AS
 	tyg_start AS PoczatekTygodnia,
 	tyg_koniec AS KoniecTygodnia,
 	proc_zapelnienia AS ProcZapelnienia
-	FROM vw_popularnosc_filmow'
+	FROM v_popularnosc_filmow'
 	);
 GO
 
@@ -215,7 +215,7 @@ CREATE OR ALTER VIEW Admin_PopularnoscFilmow AS
      tyg_start      AS PoczatekTygodnia,
      tyg_koniec     AS KoniecTygodnia,
      proc_zapelnienia AS ProcZapelnienia
-   FROM vw_popularnosc_filmow'
+   FROM v_popularnosc_filmow'
  );
 GO
 
