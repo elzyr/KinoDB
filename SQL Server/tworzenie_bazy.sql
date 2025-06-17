@@ -9,7 +9,6 @@ GO
 
 USE KinoDB;
 GO
--- Usuñ u¿ytkownika z bazy danych
 DROP USER IF EXISTS adminKinoDB;
 DROP USER IF EXISTS userKinoDB;
 GO
@@ -22,7 +21,7 @@ USE KinoDB;
 GO
 CREATE USER adminKinoDB FOR LOGIN adminKinoDB;
 CREATE USER userKinoDB FOR LOGIN userKinoDB;
-
+ 
 CREATE ROLE RolaAdmin;
 CREATE ROLE RolaUzytkownik;
 
@@ -32,18 +31,21 @@ GRANT EXECUTE ON dbo.Admin_DodajKategorie TO RolaAdmin;
 GRANT EXECUTE ON dbo.Admin_UsunKategorie TO RolaAdmin;
 GRANT EXECUTE ON dbo.Admin_DodajFilm TO RolaAdmin;
 GRANT EXECUTE ON dbo.Admin_UsunFilm TO RolaAdmin;
-GRANT EXECUTE ON dbo.Admin_Statystyki_do_pliku TO RolaAdmin;
 GRANT EXECUTE ON dbo.Admin_AktualizujStatystykiSprzedazy TO RolaAdmin;
 GRANT SELECT  ON dbo.Admin_PopularnoscFilmow TO RolaAdmin;
-
+GRANT SELECT ON dbo.statystyki_sprzedazy TO RolaAdmin;
+GRANT SELECT ON dbo.Kategorie TO RolaAdmin;
+GRANT SELECT ON dbo.Admin_PopularnoscFilmow TO RolaAdmin;
 GRANT EXECUTE ON dbo.klient_ZarezerwujSeans TO RolaUzytkownik;
 GRANT EXECUTE ON dbo.klient_AnulujRezerwacje TO RolaUzytkownik;
 GRANT SELECT  ON dbo.klient_PokazSeanse TO RolaUzytkownik;
+GRANT INSERT,SELECT ON dbo.Filmy to RolaAdmin;
 GRANT SELECT  ON dbo.klient_PokazRezerwacje TO RolaUzytkownik;
-GRANT INSERT  ON dbo.Uzytkownicy TO RolaUzytkownik;
+GRANT INSERT  ON KinoDB.dbo.Uzytkownicy TO RolaUzytkownik;
+GRANT EXECUTE ON dbo.Admin_Statystyki_do_pliku To RolaAdmin;
 GO
 
--- Dodanie u¿ytkowników do ról
+
 ALTER ROLE RolaAdmin ADD MEMBER adminKinoDB;
 ALTER ROLE RolaUzytkownik ADD MEMBER userKinoDB;
 GO
@@ -68,12 +70,6 @@ CREATE TABLE Filmy (
         REFERENCES dbo.Kategorie(kategoria_id),
     czy_wycofany INT NOT NULL DEFAULT(0)
       CONSTRAINT CK_Filmy_czy_wycofany CHECK (czy_wycofany IN (0,1))
-);
-GO
-
-CREATE TABLE Kina (
-    kino_id INT IDENTITY(1,1) PRIMARY KEY,
-    Nazwa SYSNAME NOT NULL
 );
 GO
 

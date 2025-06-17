@@ -4,34 +4,15 @@ EXEC dbo.Admin_DodajKategorie
     @Nazwa = N'Muzyczne';
 GO
 
-DECLARE @KategoriaID INT;
-SELECT @KategoriaID = kategoria_id FROM dbo.Kategorie WHERE nazwa = N'Muzyczne';
-
-EXEC dbo.Admin_DodajFilm
-    @Tytul = N'Bohemian Rhapsody',
-    @MinimalnyWiek = 12,
-    @CzasTrwania = 134,
-    @KategoriaID = @KategoriaID;
-GO
-
-EXEC dbo.Admin_AktualizujStatystykiSprzedazy
-    @Tytul = N'Bohemian Rhapsody';
-GO
-
-SELECT * FROM dbo.Admin_PopularnoscFilmow;
-GO
-revert
-
-SELECT ORIGINAL_LOGIN() AS OriginalLogin, SYSTEM_USER AS SystemUser;
-
-
-
-EXEC dbo.Admin_AktualizujStatystykiSprzedazy @Tytul = N'The Conjuring';
-EXEC dbo.Admin_AktualizujStatystykiSprzedazy @Tytul = N'Kraina Lodu';
-GO
-
 SELECT * FROM dbo.statystyki_sprzedazy;
 GO
 
-EXEC dbo.Admin_Statystyki_do_pliku ;
-GO
+
+EXEC admin_DodajKategorie N'TestCat';
+
+Select * From dbo.Kategorie
+
+insert into Filmy (Tytul,minimalny_wiek,Czas_trwania,kategoria_id) values ('Fajny film2','18',130,1);
+
+SELECT * FROM dbo.Filmy WHERE tytul = N'Fajny film2';
+

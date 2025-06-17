@@ -62,7 +62,7 @@ CREATE OR ALTER VIEW Admin_PopularnoscFilmow AS
 	tyg_start AS PoczatekTygodnia,
 	tyg_koniec AS KoniecTygodnia,
 	proc_zapelnienia AS ProcZapelnienia
-	FROM v_popularnosc_filmow'
+	FROM vw_popularnosc_filmow'
 	);
 GO
 
@@ -118,7 +118,7 @@ BEGIN
 	VALUES (@Nazwa);
 	EXEC (
 		N'BEGIN
-			Admin_Pkg.dodaj_kategorie(?);
+			SCOTT.Admin_Pkg.dodaj_kategorie(?);
 		END;',
 		@Nazwa
 	) AT kinolodz;
@@ -144,7 +144,7 @@ BEGIN
 	VALUES(@Tytul, @CzasTrwania, @MinimalnyWiek, @IdKategorii, 0);
 	EXEC (
 		N'BEGIN
-			Admin_Pkg.dodaj_film(?,?,?,?);
+			SCOTT.Admin_Pkg.dodaj_film(?,?,?,?);
 		END;',
 		@Tytul,
 		@CzasTrwania,
@@ -165,7 +165,7 @@ CREATE OR ALTER VIEW Admin_PopularnoscFilmow AS
      tyg_start      AS PoczatekTygodnia,
      tyg_koniec     AS KoniecTygodnia,
      proc_zapelnienia AS ProcZapelnienia
-   FROM v_popularnosc_filmow'
+   FROM vw_popularnosc_filmow'
  );
 GO
 

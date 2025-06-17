@@ -18,7 +18,7 @@ sp_addlinkedserver
     )
   )';
 go
--- W³¹czenie RPC OUT (konieczne do EXEC AT)
+
 EXEC master.dbo.sp_serveroption 
   @server = N'kinolodz',
   @optname = N'rpc out',
@@ -26,7 +26,6 @@ EXEC master.dbo.sp_serveroption
 GO
 
 
--- Mapowanie loginu adminKinoDB (SQL Server ? Oracle)
 EXEC sp_addlinkedsrvlogin 
     @rmtsrvname = N'kinolodz',
     @useself = 'false',
@@ -35,7 +34,7 @@ EXEC sp_addlinkedsrvlogin
     @rmtpassword = N'admin123';
 GO
 
--- Mapowanie loginu userKinoDB (SQL Server ? Oracle)
+
 EXEC sp_addlinkedsrvlogin 
     @rmtsrvname = N'kinolodz',
     @useself = 'false',
@@ -43,9 +42,6 @@ EXEC sp_addlinkedsrvlogin
     @rmtuser = N'userKinoDB',
     @rmtpassword = N'user123';
 
-
-
--- chyba useless?
 
 go
 sp_addlinkedsrvlogin
@@ -55,8 +51,3 @@ sp_addlinkedsrvlogin
      ,  @rmtuser =  N'SCOTT' 
      ,  @rmtpassword =  N'12345' 
 go
-
-EXEC master.dbo.sp_serveroption 
-  @server  = N'kinolodz',
-  @optname = N'rpc out',
-  @optvalue= N'true';

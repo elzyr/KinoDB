@@ -33,7 +33,7 @@ BEGIN
 
 	EXEC (
 	N'BEGIN
-	Klient_Pkg.Zarezerwuj_Seans(?,?,?,?,?,?);
+	SCOTT.Klient_Pkg.Zarezerwuj_Seans(?,?,?,?,?,?);
 	END;',
 	@UserId,
 	@TytulFilmu,
@@ -53,8 +53,6 @@ CREATE OR ALTER PROCEDURE klient_AnulujRezerwacje
 	@DataSeansu DATETIME
 AS
 BEGIN
-	SET NOCOUNT ON;
-
 	DECLARE @UserId INT;
 
 	SELECT @UserId = user_id
@@ -69,7 +67,7 @@ BEGIN
 
 	EXEC (
 	N'BEGIN
-	Klient_Pkg.Anuluj_Rezerwacje(?,?,?);
+	SCOTT.Klient_Pkg.Anuluj_Rezerwacje(?,?,?);
 	END;',
 	@UserId,
 	@TytulFilmu,

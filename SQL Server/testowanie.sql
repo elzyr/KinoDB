@@ -15,7 +15,6 @@ BEGIN DISTRIBUTED TRANSACTION
 	VALUES
 	 (N'Jan', N'Kowalski', '2000-05-22', N'jan.k@example.com', N'premium');
 
-
 	EXEC klient_ZarezerwujSeans
 	@UserId = 1,
 	@Email = N'jan.k@example.com',
@@ -58,8 +57,6 @@ GO
 
 go
 EXEC Admin_Statystyki_do_pliku 
-@Miesiac = 12, 
-@Rok = 2025;
 
 
 EXEC Admin_AktualizujStatystykiSprzedazy @Tytul = N'The Conjuring';
@@ -70,11 +67,4 @@ select * from statystyki_sprzedazy;
 
 
 USE KinoDB;
-GO
-
-EXEC dbo.Admin_DodajFilmRozproszony
-    @Tytul = N'Incepcja',
-    @MinimalnyWiek = 14,
-    @CzasTrwania = 148,
-    @NazwaKategorii = N'Sci-Fi';
 GO

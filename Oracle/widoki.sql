@@ -1,4 +1,4 @@
-CREATE OR REPLACE VIEW v_rezerwacje AS
+CREATE OR REPLACE VIEW vw_rezerwacje AS
  SELECT
   r.rezerwacja_id,
   f.tytul,
@@ -14,7 +14,7 @@ CREATE OR REPLACE VIEW v_rezerwacje AS
  WHERE r.czy_anulowane = 0
 /
 
-CREATE OR REPLACE VIEW v_seanse AS
+CREATE OR REPLACE VIEW vw_seanse AS
  SELECT
   f.tytul AS tytul,
   r.data_rozpoczecia AS data_rozpoczecia,
@@ -29,7 +29,7 @@ CREATE OR REPLACE VIEW v_seanse AS
   r.data_rozpoczecia
 /
 
-CREATE OR REPLACE VIEW v_popularnosc_filmow AS
+CREATE OR REPLACE VIEW vw_popularnosc_filmow AS
 WITH miejsca_seans AS (
   SELECT
     r.repertuar_id,
@@ -82,10 +82,12 @@ GRANT EXECUTE ON SCOTT.Admin_Pkg TO r_admin;
 GRANT EXECUTE ON SCOTT.Klient_Pkg TO r_user;
 
 GRANT SELECT ON SCOTT.vw_popularnosc_filmow TO r_admin;
-GRANT SELECT ON SCOTT.v_rezerwacje TO r_user;
+GRANT SELECT ON SCOTT.vw_rezerwacje TO r_user;
 GRANT SELECT ON SCOTT.vw_seanse TO r_admin;
 GRANT EXECUTE ON Klient_Pkg TO userKinoDB;
-
+GRANT SELECT ON SCOTT.v_popularnosc_filmow TO r_admin;
 GRANT r_admin TO adminKinoDB;
 GRANT r_user TO userKinoDB;
+
+
 
