@@ -12,6 +12,7 @@ VALUES
  (N'Marcin', N'Nowak', '2002-05-22', N'marcin.k@example.com', N'standard');
 GO
 
+
   EXEC dbo.klient_ZarezerwujSeans
   @Email = N'marcin.k@example.com',
   @TytulFilmu = N'Kraina Lodu',

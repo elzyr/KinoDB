@@ -85,7 +85,8 @@ GRANT SELECT ON SCOTT.vw_popularnosc_filmow TO r_admin;
 GRANT SELECT ON SCOTT.vw_rezerwacje TO r_user;
 GRANT SELECT ON SCOTT.vw_seanse TO r_admin;
 GRANT EXECUTE ON Klient_Pkg TO userKinoDB;
-GRANT SELECT ON SCOTT.v_popularnosc_filmow TO r_admin;
+GRANT SELECT ON SCOTT.vw_popularnosc_filmow TO r_admin;
+
 GRANT r_admin TO adminKinoDB;
 GRANT r_user TO userKinoDB;
 

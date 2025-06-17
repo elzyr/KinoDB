@@ -43,7 +43,6 @@ BEGIN
 	@rabat
 	) AT kinolodz;
 
-	EXEC Admin_AktualizujStatystykiSprzedazy @TytulFilmu;
 END;
 GO
 
