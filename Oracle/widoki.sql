@@ -66,3 +66,31 @@ GROUP BY
   f.tytul,
   TRUNC(r.data_rozpoczecia, 'IW');
 
+
+
+
+
+
+-- uzytkownicy i role
+
+CREATE USER adminKinoDB IDENTIFIED BY admin123;
+CREATE USER userKinoDB IDENTIFIED BY user123;
+
+GRANT CONNECT TO adminKinoDB;
+GRANT CONNECT TO userKinoDB;
+
+
+CREATE ROLE r_admin;
+CREATE ROLE r_user;
+
+GRANT EXECUTE ON SCOTT.Admin_Pkg TO r_admin;
+GRANT EXECUTE ON SCOTT.Klient_Pkg TO r_user;
+
+GRANT SELECT ON SCOTT.vw_popularnosc_filmow TO r_admin;
+GRANT SELECT ON SCOTT.v_rezerwacje TO r_user;
+GRANT SELECT ON SCOTT.vw_seanse TO r_admin;
+GRANT EXECUTE ON Klient_Pkg TO userKinoDB;
+
+GRANT r_admin TO adminKinoDB;
+GRANT r_user TO userKinoDB;
+

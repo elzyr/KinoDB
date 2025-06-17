@@ -15,7 +15,9 @@ BEGIN DISTRIBUTED TRANSACTION
 	VALUES
 	 (N'Jan', N'Kowalski', '2000-05-22', N'jan.k@example.com', N'premium');
 
+
 	EXEC klient_ZarezerwujSeans
+	@UserId = 1,
 	@Email = N'jan.k@example.com',
 	@TytulFilmu = N'The Conjuring',
 	@DataSeansu = '2026-01-02 10:00',

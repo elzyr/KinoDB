@@ -49,13 +49,9 @@ GRANT CONNECT TO userKinoDB;
 CREATE ROLE r_admin;
 CREATE ROLE r_user;
 
--- ADMIN mo¿e korzystaæ tylko z pakietu Admin_Pkg
 GRANT EXECUTE ON SCOTT.Admin_Pkg TO r_admin;
-
--- USER mo¿e korzystaæ tylko z pakietu Klient_Pkg
 GRANT EXECUTE ON SCOTT.Klient_Pkg TO r_user;
 
--- Opcjonalnie: dodatkowe SELECT-y
 GRANT SELECT ON SCOTT.vw_popularnosc_filmow TO r_admin;
 GRANT SELECT ON SCOTT.v_rezerwacje TO r_user;
 GRANT SELECT ON SCOTT.vw_seanse TO r_admin;
