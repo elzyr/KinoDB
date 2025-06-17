@@ -44,7 +44,6 @@ CREATE OR REPLACE PACKAGE BODY Klient_Pkg AS
         current_bilet_id NUMBER      := 0;
         cnt NUMBER;
     BEGIN
-           /* 1. Pobierz seans i salê */
 SELECT r.repertuar_id,
        DEREF(r.sala_ref).sala_id,
        REF(r)
@@ -57,17 +56,16 @@ JOIN   Film_table f
 WHERE  f.tytul          = p_tytul_filmu
   AND  r.data_rozpoczecia = p_data_seansu_in;
 
-/* 2. SprawdŸ, czy u¿ytkownik ju¿ zarezerwowa³ */
 SELECT COUNT(*)
 INTO   cnt
 FROM   Rezerwacja_table
 WHERE  uzytkownik    = p_user_id
-  AND  repertuar_ref = ref_repertuar   -- ? u¿ywamy zmiennej
+  AND  repertuar_ref = ref_repertuar
   AND  czy_anulowane = 0;
 
 IF cnt > 0 THEN
    RAISE_APPLICATION_ERROR(-20020,
-     'U¿ytkownik ju¿ zarezerwowa³ ten seans.');
+     'UUzytkownik juz zarezerwowal ten seans.');
 END IF;
         
         SELECT r.repertuar_id,
@@ -93,17 +91,15 @@ END IF;
                 WHERE  m.rzad       = p_preferencja_rzedu
                   AND  m.czy_zajete = 0
                 FETCH FIRST 1 ROWS ONLY;
-    
-                /* Dodaj bilet do kolekcji */
+
                 current_bilet_id := current_bilet_id + 1;
                 bilety_kolekcja.EXTEND;
                 bilety_kolekcja(bilety_kolekcja.LAST) := Bilet(
                        current_bilet_id,
-                       50 * p_rabat,              -- cena z rabatem
+                       50 * p_rabat,
                        p_preferencja_rzedu,
                        miejsce_rec.numer );
     
-                /* Oznacz miejsce jako zajete */
                 UPDATE TABLE(
                          SELECT s.miejsca
                          FROM   Sala_table s
@@ -115,18 +111,17 @@ END IF;
             EXCEPTION
                 WHEN NO_DATA_FOUND THEN
                     RAISE_APPLICATION_ERROR(-20011,
-                       'Brak wolnych miejsc w wybranym rzêdzie.');
+                       'Brak wolnych miejsc w wybranym rzï¿½dzie.');
             END;
         END LOOP;
     
-        /* 1C.  Zapisz rezerwacje */
         INSERT INTO Rezerwacja_table VALUES (
             rezerwacja_seq.NEXTVAL,
             SYSDATE,
             50 * p_ilosc_miejsc_do_zarezerwowania * p_rabat,
-            0,                 -- czy_anulowane
+            0,
             ref_repertuar,
-            p_user_id,         -- <- zapisujemy samo ID u¿ytkownika
+            p_user_id,
             bilety_kolekcja
         );
     
@@ -135,7 +130,7 @@ END IF;
             RAISE_APPLICATION_ERROR(-20010, 'Nie znaleziono seansu.');
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20012,
-                'B³¹d rezerwacji: ' || SQLERRM);
+                'Blad rezerwacji: ' || SQLERRM);
     END Zarezerwuj_Seans;
 
     -- Procedura do anulowania rezerwacji
@@ -162,7 +157,7 @@ PROCEDURE Anuluj_Rezerwacje (
 
       IF SYSDATE > dt_start - 1/24 THEN
           RAISE_APPLICATION_ERROR(-20006,
-            'Nie mo¿na anulowaæ rezerwacji mniej ni¿ godzinê przed seansem!');
+            'Nie mozna anulowac rezerwacji mniej niz godzine przed seansem!');
       END IF;
 
       /* rezerwacja */
@@ -234,11 +229,11 @@ PROCEDURE Anuluj_Rezerwacje (
                  TO_CHAR(rec.data_seansu,'DD-MM-YYYY HH24:MI'));
     
             FOR b IN (SELECT * FROM TABLE(rec.bilety)) LOOP
-                DBMS_OUTPUT.PUT_LINE('-> Miejsce: Rz¹d '||b.rzad||
+                DBMS_OUTPUT.PUT_LINE('-> Miejsce: Rzad '||b.rzad||
                                      ', Numer '||b.miejsce);
             END LOOP;
     
-            DBMS_OUTPUT.PUT_LINE('Cena ³¹czna: ' || rec.cena_laczna || ' PLN');
+            DBMS_OUTPUT.PUT_LINE('Cena laczna: ' || rec.cena_laczna || ' PLN');
             DBMS_OUTPUT.PUT_LINE('-------------------------------------');
         END LOOP;
     END Pokaz_Rezerwacje;
